@@ -42,6 +42,19 @@ export function createRoute(legs = LEGS, departing = true) {
   return { legs, leg: 0, departing, final: false, cruise: false, calloutsArmed: false };
 }
 
+/** Degrees to turn from the current ground track to reach a point; right is positive. */
+export function turnTo(s, x, z) {
+  const track = Math.atan2(s.vel[2], s.vel[0]);
+  return (wrap(Math.atan2(z - s.pos[2], x - s.pos[0]) - track)) / DEG;
+}
+
+/** A plain instruction for that turn. */
+export function turnText(degrees) {
+  const amount = Math.round(Math.abs(degrees) / 5) * 5;
+  if (amount < 5) return 'Straight ahead';
+  return `Turn ${degrees > 0 ? 'right' : 'left'} ${amount}°`;
+}
+
 /** Leg speeds are written for a 145 kt approach and shift with the airplane. */
 export const legSpeed = (leg, ac) => leg.kt + ac.approachSpeedKt - 145;
 

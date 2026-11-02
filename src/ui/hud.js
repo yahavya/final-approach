@@ -4,7 +4,7 @@
 import { clamp, DEG, eulerFrom, FT, KT, qRotateInv } from '../sim/math.js';
 import { wheelHeight } from '../sim/gear.js';
 import { RUNWAY } from '../game/scenario.js';
-import { currentLeg, legSpeed } from '../game/route.js';
+import { currentLeg, legSpeed, turnText, turnTo } from '../game/route.js';
 
 const GREEN = '#7dffa0';
 const AMBER = '#ffb347';
@@ -202,12 +202,13 @@ export function createHud(canvas) {
     });
   }
 
-  function marker(world, target) {
+  /** A diamond on a point in the world, or an arrow at the screen edge if it's out of view. */
+  function marker(world, target, color, label, arrowY) {
     const p = world.project(target);
     const margin = 40;
     const off = p.behind || p.x < margin || p.x > w - margin || p.y < margin || p.y > h - margin;
-    ctx.strokeStyle = '#ff9df5';
-    ctx.fillStyle = '#ff9df5';
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
     ctx.lineWidth = 2.5;
     if (!off) {
       ctx.beginPath();
@@ -217,33 +218,113 @@ export function createHud(canvas) {
       ctx.lineTo(p.x - 12, p.y);
       ctx.closePath();
       ctx.stroke();
+      text(label, p.x, p.y - 22, 13, 'center', color);
       return;
     }
     const side = p.behind ? (p.x < w / 2 ? 1 : -1) : (p.x < w / 2 ? -1 : 1);
     const ax = w / 2 + side * Math.min(w * 0.42, 460);
-    const ay = h * 0.3;
     ctx.beginPath();
-    ctx.moveTo(ax + side * 18, ay);
-    ctx.lineTo(ax - side * 6, ay - 14);
-    ctx.lineTo(ax - side * 6, ay + 14);
+    ctx.moveTo(ax + side * 18, arrowY);
+    ctx.lineTo(ax - side * 6, arrowY - 14);
+    ctx.lineTo(ax - side * 6, arrowY + 14);
     ctx.closePath();
     ctx.fill();
+    text(label, ax - side * 14, arrowY, 13, side > 0 ? 'right' : 'left', color);
+  }
+
+  /** A small moving map, with your direction of travel always pointing up. */
+  function navMap(g, runwayShown) {
+    const size = 170;
+    const x0 = w - 22 - size;
+    const y0 = 88;
+    const cx0 = x0 + size / 2;
+    const cy0 = y0 + size * 0.68;
+    const s = g.s;
+    const track = Math.atan2(s.vel[2], s.vel[0]);
+    const fx = Math.cos(track);
+    const fz = Math.sin(track);
+
+    const legs = g.route.legs.slice(g.route.final ? g.route.legs.length : g.route.leg);
+    const points = legs.map((l) => ({ x: l.x, z: l.z }));
+    if (runwayShown) points.push({ x: 0, z: 0 }, { x: RUNWAY.length, z: 0 });
+    let range = 1500;
+    for (const p of points) range = Math.max(range, Math.hypot(p.x - s.pos[0], p.z - s.pos[2]));
+    const scale = (size * 0.56) / range;
+    const place = (p) => {
+      const dx = p.x - s.pos[0];
+      const dz = p.z - s.pos[2];
+      return { x: cx0 + (-fz * dx + fx * dz) * scale, y: cy0 - (fx * dx + fz * dz) * scale };
+    };
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(8,12,16,0.72)';
+    ctx.beginPath();
+    ctx.roundRect(x0, y0, size, size, 10);
+    ctx.fill();
+    ctx.clip();
+
+    ctx.strokeStyle = '#ff9df5';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    let from = place({ x: s.pos[0], z: s.pos[2] });
+    ctx.moveTo(from.x, from.y);
+    for (const p of points) {
+      from = place(p);
+      ctx.lineTo(from.x, from.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#ff9df5';
+    legs.forEach((l, i) => {
+      const p = place(l);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, i === 0 ? 5 : 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    if (runwayShown) {
+      const a = place({ x: 0, z: 0 });
+      const b = place({ x: RUNWAY.length, z: 0 });
+      ctx.strokeStyle = GREEN;
+      ctx.lineWidth = 5;
+      line(a.x, a.y, b.x, b.y);
+      text('RWY', b.x, b.y - 11, 12, 'center');
+    }
+
+    // You
+    ctx.fillStyle = '#f4f1ea';
+    ctx.beginPath();
+    ctx.moveTo(cx0, cy0 - 9);
+    ctx.lineTo(cx0 + 6, cy0 + 7);
+    ctx.lineTo(cx0, cy0 + 3);
+    ctx.lineTo(cx0 - 6, cy0 + 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   function routePanel(g, world) {
     const leg = currentLeg(g);
     const s = g.s;
+    const pink = '#ff9df5';
+    const runwayShown = !g.route.legs[g.route.legs.length - 1].cruise;
     if (leg) {
       const km = Math.hypot(leg.x - s.pos[0], leg.z - s.pos[2]) / 1000;
-      const legNumber = g.route.leg + 1;
       const altText = leg.path ? 'glide path' : `${leg.altFt} ft`;
-      text(`Leg ${legNumber} of ${g.route.legs.length}: ${leg.name}`, w - 22, 26, 14, 'right', '#ff9df5');
-      text(`${km.toFixed(1)} km · ${altText} · ${legSpeed(leg, g.ac)} kt`, w - 22, 46, 13, 'right', '#ff9df5');
-
-      marker(world, [leg.x, leg.path ? 200 : leg.altFt * FT, leg.z]);
+      text(`Leg ${g.route.leg + 1} of ${g.route.legs.length}: ${leg.name}`, w - 22, 26, 14, 'right', pink);
+      text(`${km.toFixed(1)} km · ${altText} · ${legSpeed(leg, g.ac)} kt`, w - 22, 46, 13, 'right', pink);
+      if (g.phase === 'approach') text(turnText(turnTo(s, leg.x, leg.z)), w - 22, 68, 17, 'right', '#f4f1ea');
+      marker(world, [leg.x, leg.path ? 200 : leg.altFt * FT, leg.z], pink, 'NEXT', h * 0.3);
     } else {
-      text('Final approach', w - 22, 26, 14, 'right', '#ff9df5');
+      text('Final approach', w - 22, 26, 14, 'right', pink);
     }
+    if (runwayShown) {
+      const km = Math.hypot(s.pos[0], s.pos[2]) / 1000;
+      if (g.phase === 'approach') marker(world, [0, 2, 0], GREEN, `RWY ${km.toFixed(km < 10 ? 1 : 0)} km`, h * 0.38);
+    }
+    if (w >= 900) navMap(g, runwayShown);
   }
 
   function thrustBar(x, y, height, lever, spool, reverse) {

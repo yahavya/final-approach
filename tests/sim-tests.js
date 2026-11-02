@@ -9,7 +9,7 @@ import { createBot, flyBot } from '../src/game/bot.js';
 import { scoreLanding, sinkLabel } from '../src/game/scoring.js';
 import { createInput } from '../src/ui/input.js';
 import { createCoach } from '../src/game/coach.js';
-import { flyRoute } from '../src/game/route.js';
+import { flyRoute, turnText, turnTo } from '../src/game/route.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopilot.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from '../src/game/walk.js';
 import { cabinLayout } from '../src/game/cabinLayout.js';
@@ -577,6 +577,16 @@ export function allTests() {
     hb.controls.elevator = 0.2;
     handBack(hb);
     check('Handing back centers the stick', hb.controls.elevator === 0);
+  }
+
+  // Directions
+  {
+    const s = { pos: [0, 0, 0], vel: [100, 0, 0] };
+    check('A target to the right says turn right', turnTo(s, 0, 1000) > 85 && turnText(turnTo(s, 0, 1000)) === 'Turn right 90°', turnText(turnTo(s, 0, 1000)));
+    check('A target to the left says turn left', turnText(turnTo(s, 1000, -1000)) === 'Turn left 45°', turnText(turnTo(s, 1000, -1000)));
+    check('A target dead ahead says straight ahead', turnText(turnTo(s, 1000, 10)) === 'Straight ahead');
+    s.vel = [0, 0, -100];
+    check('Directions follow where you are going', turnText(turnTo(s, 1000, 0)) === 'Turn right 90°', turnText(turnTo(s, 1000, 0)));
   }
 
   // Tel Aviv to Athens
