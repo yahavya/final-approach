@@ -342,9 +342,10 @@ function buildFire(g, l) {
       flames.forEach((s, i) => {
         const a = i * 2.4;
         const rise = ((time * 1.3 + i * 0.17) % 1);
-        s.position.set(x + Math.cos(a) * 0.5, l.cabinFloor + 0.25 + rise * 1.25, l.aisle + 0.75 + Math.sin(a) * 0.45);
-        const size = (0.75 - rise * 0.45) * strength;
-        s.scale.set(size, size * 1.3, 1);
+        // In the aisle, tall enough to show above the seat backs.
+        s.position.set(x + Math.cos(a) * 0.35, l.cabinFloor + 0.3 + rise * 1.7, l.aisle + Math.sin(a) * 0.32);
+        const size = (1.25 - rise * 0.7) * strength;
+        s.scale.set(size, size * 1.4, 1);
         s.material.opacity = (1 - rise) * 0.95;
       });
       smoke.forEach((s, i) => {
@@ -358,7 +359,7 @@ function buildFire(g, l) {
         s.visible = sprayFrom != null;
         if (sprayFrom == null) return;
         const t = (time * 2.2 + i * 0.1) % 1;
-        s.position.set(sprayFrom + (x - sprayFrom) * t, l.cabinFloor + 1.1 - t * 0.4, l.aisle + 0.15 + t * 0.55);
+        s.position.set(sprayFrom + (x - sprayFrom) * t, l.cabinFloor + 1.1 - t * 0.4, l.aisle + 0.1);
         s.scale.setScalar(0.15 + t * 0.6);
         s.material.opacity = 0.9 * (1 - t);
       });
