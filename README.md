@@ -1,6 +1,6 @@
 # Final Approach
 
-Fly a Boeing 737-800, Airbus A320-200 or Boeing 747-400 at Ben Gurion in your browser. Landing mode starts ten kilometers out on the approach to runway 12. Full Flight takes off from runway 30, flies out over the sea, and comes back to land.
+Fly a Boeing 737-800, Airbus A320-200 or Boeing 747-400 at Ben Gurion in your browser. Landing mode starts ten kilometers out on the approach to runway 12. Full Flight takes off from runway 30, flies out over the sea, and comes back to land. Athens flies from Tel Aviv to runway 03R at Athens, with the cruise shown as a map.
 
 ## Play
 
@@ -32,7 +32,7 @@ The coach shows what to press in real time, and it's on until you turn it off. T
 
 Every flight gets its own crosswind, gusts and slightly off-center start, so the airplane will not land itself. Add `?calm=1` for still air and a perfect start, to practice the flare alone.
 
-Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
+Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, `?mode=athens` for Athens, plus `&arrive=1` to skip to the Athens arrival, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
 
 ## Privacy
 

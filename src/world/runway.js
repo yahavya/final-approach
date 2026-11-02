@@ -125,7 +125,7 @@ const PAPI_X = 420; // sited for the pilot's eye so wheels end up at the aim poi
 const PAPI_Z = [-62, -53, -44, -35]; // outermost first, on the left
 const PAPI_ANGLE = [2.5, 2.83, 3.17, 3.5];
 
-export function createRunway(scene) {
+export function createRunway(scene, numbers = ['12', '30']) {
   const group = new THREE.Group();
   scene.add(group);
   const L = RUNWAY.length;
@@ -171,8 +171,8 @@ export function createRunway(scene) {
   painted.position.y = 0;
   group.add(painted);
 
-  group.add(decal('12', 58, 1));
-  group.add(decal('30', L - 58, -1));
+  group.add(decal(numbers[0], 58, 1));
+  group.add(decal(numbers[1], L - 58, -1));
 
   runwayLights(group);
 

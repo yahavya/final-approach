@@ -168,20 +168,21 @@ const scale4 = (a, k) => [a[0] * k, a[1] * k, a[2] * k, a[3] * k];
  * Returns the angle of attack, the thrust lever setting and the stick trim
  * that make every force and moment balance.
  */
-export function solveTrim(ac, V, gamma) {
+export function solveTrim(ac, V, gamma, flap = 1, gearDown = 1) {
+  const f = flapValues(ac, flap);
   const W = ac.mass * GRAVITY;
   const qS = 0.5 * RHO * V * V * ac.wingArea;
   let alpha = 5 * DEG;
   let T = 50000;
   for (let i = 0; i < 12; i++) {
     const cl = (W * Math.cos(gamma) - T * Math.sin(alpha)) / qS;
-    alpha = (cl - ac.CL0) / ac.CLalpha;
-    const cd = ac.CD0 + ac.inducedK * cl * cl;
+    alpha = (cl - f.CL0) / ac.CLalpha;
+    const cd = f.CD0 + ac.gearCD * gearDown + ac.inducedK * cl * cl;
     T = (cd * qS + W * Math.sin(gamma)) / Math.cos(alpha);
   }
   const lever = (T - ac.thrustIdle) / (thrustAvailable(ac, V) - ac.thrustIdle);
   const qSc = qS * ac.chord;
-  const trim = -(ac.Cm0 + ac.CmAlpha * alpha + (T * -ac.engineY) / qSc) / ac.CmStick;
+  const trim = -(f.Cm0 + ac.CmAlpha * alpha + (T * -ac.engineY) / qSc) / ac.CmStick;
   return { alpha, lever: clamp(lever, 0, 1), trim, thrust: T };
 }
 

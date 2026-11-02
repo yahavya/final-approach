@@ -1,8 +1,8 @@
 // The game itself: starting position, phases, touchdown detection and results.
 // Knows nothing about graphics or the keyboard, so tests can drive it directly.
 
-import { DEG, eulerFrom, FT, KT, qAxis } from '../sim/math.js';
-import { createRoute, updateRoute } from './route.js';
+import { DEG, eulerFrom, FT, KT, qAxis, qMul } from '../sim/math.js';
+import { ATHENS_ARRIVAL, ATHENS_DEPARTURE, createRoute, updateRoute } from './route.js';
 import { windAt } from './conditions.js';
 import { applaud, createPassengers, jolt, touchdown, updatePassengers } from './passengers.js';
 import { cabinLayout } from './cabinLayout.js';
@@ -21,9 +21,16 @@ export const RUNWAY = {
   glideDeg: 3,
 };
 
+export const AIRPORTS = {
+  tlv: { id: 'tlv', name: 'Tel Aviv', headingTrue: 121, thresholdElevationFt: 112 },
+  ath: { id: 'ath', name: 'Athens', headingTrue: 32, thresholdElevationFt: 271 },
+};
+
+const ARRIVAL_KT = 230;
+
 export const START_DISTANCE = 10000; // m before the threshold
 
-function createFullFlight(ac, base) {
+function createFullFlight(ac, base, toAthens) {
   // Lined up at the far end of the runway, facing the sea: this is runway 30.
   const s = createState(
     [RUNWAY.length - 45, ac.gearHeight - 0.28, 0],
@@ -34,10 +41,10 @@ function createFullFlight(ac, base) {
   s.flap = ac.flapDetents[1];
   return {
     ...base,
-    mode: 'full',
+    mode: toAthens ? 'athens' : 'full',
     s,
     phase: 'takeoff',
-    route: createRoute(),
+    route: toAthens ? createRoute(ATHENS_DEPARTURE) : createRoute(),
     calloutsLeft: [],
     controls: {
       ...base.controls,
@@ -76,6 +83,7 @@ export function createGame(ac, opts = {}) {
       brake: 0, reverse: false, spoilers: false,
       flap: 1, gearDown: true,
     },
+    airport: AIRPORTS.tlv,
     route: null,
     passengers: createPassengers(cabinLayout(ac).passengers),
     conditions: weather,
@@ -92,7 +100,7 @@ export function createGame(ac, opts = {}) {
     wasStalling: 0,
     sinkWarned: 0,
   };
-  return opts.mode === 'full' ? createFullFlight(ac, game) : game;
+  return opts.mode === 'full' || opts.mode === 'athens' ? createFullFlight(ac, game, opts.mode === 'athens') : game;
 }
 
 function bankDeg(s) {
@@ -160,7 +168,7 @@ function firstTouchdown(g) {
   touchdown(g, sinkFpm);
 
   if (sinkFpm >= CRASH_FPM) return finish(g, g.time - g.wasStalling < 3 ? 'stall' : 'crash');
-  if (g.mode === 'full' && !nearAirport(s)) return finish(g, 'terrain');
+  if (g.route && !nearAirport(s)) return finish(g, 'terrain');
   if (g.record.x < 0 || Math.abs(s.pos[2]) > RUNWAY.width / 2) return finish(g, g.record.x < 0 ? 'short' : 'offRunway');
 }
 
@@ -176,9 +184,47 @@ function checkStrikes(g) {
   }
 }
 
+/**
+ * End of the cruise: the airplane arrives over the Aegean, and the world becomes
+ * Athens' frame, so runway 03R is at the origin and all the landing logic just works.
+ */
+export function beginArrival(g) {
+  const { ac, s, controls: c } = g;
+  const V = ARRIVAL_KT * KT + ac.approachSpeedKt - 145;
+  const level = solveTrim(ac, V, 0, 0, 0);
+  const wind = g.conditions ? windAt(g.conditions, g.time, 2400) : [0, 0, 0];
+
+  // Heading west across the Aegean, along -z.
+  const heading = qAxis([0, 1, 0], Math.PI / 2);
+  s.pos = [-21000, 7000 * FT + ac.gearHeight, 34000];
+  s.vel = [wind[0], 0, -V + wind[2]];
+  s.q = qMul(heading, qAxis([0, 0, 1], level.alpha));
+  s.w = [0, 0, 0];
+  s.flap = 0;
+  s.gearDown = 0;
+  s.spool = level.lever;
+  s.rev = 0;
+  s.spoilers = 0;
+  c.flap = 0;
+  c.gearDown = false;
+  c.throttle = level.lever;
+  c.trim = level.trim;
+  c.elevator = 0;
+  c.aileron = 0;
+  c.rudder = 0;
+
+  g.passengers.lastVel = null; // the map is not a jolt
+  g.airport = AIRPORTS.ath;
+  g.route = createRoute(ATHENS_ARRIVAL, false);
+  g.calloutsLeft = [];
+  if (g.fbw) g.fbw.active = false;
+  g.phase = 'approach';
+  g.events.push({ type: 'arrival' });
+}
+
 /** Advance the game one fixed step. Controls are read from g.controls. */
 export function tick(g) {
-  if (g.phase === 'finished') return;
+  if (g.phase === 'finished' || g.phase === 'cruise') return;
   const s = g.s;
   const c = g.controls;
 
@@ -211,6 +257,11 @@ export function tick(g) {
   if (g.phase === 'approach') {
     if (g.route) {
       updateRoute(g);
+      if (g.route.cruise) {
+        g.phase = 'cruise';
+        g.events.push({ type: 'cruise' });
+        return;
+      }
       if (wheels / FT > 1500 && !g.route.calloutsArmed) {
         g.route.calloutsArmed = true;
         g.calloutsLeft = [...g.ac.callouts];

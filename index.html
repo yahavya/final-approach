@@ -18,7 +18,7 @@
   .plane { flex: 1; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
   .plane.on { border-color: var(--amber); color: var(--amber); }
   #plane-blurb { color: var(--dim); font-size: 13px; margin: 0 0 14px; min-height: 1.3em; }
-  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 22px; }
   .mode { text-align: left; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font: inherit; cursor: pointer; }
   .mode:hover, .mode:focus-visible { border-color: var(--amber); outline: none; }
   .mode b { display: block; font-size: 18px; margin-bottom: 4px; }
@@ -27,10 +27,14 @@
   @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } }
   #analytics-notice { margin-top: 12px; color: var(--dim); font-size: 13px; }
   #analytics-toggle { font: inherit; font-size: 13px; color: var(--dim); background: none; border: 0; padding: 0 0 0 4px; text-decoration: underline; cursor: pointer; }
+  #cruise { background: #0d2a3f; flex-direction: column; gap: 14px; text-align: center; }
+  #cruise svg { width: min(760px, 100%); height: auto; max-height: 64vh; }
+  #cruise h2 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+  #cruise p { margin: 0; color: var(--dim); font-size: 15px; }
   #flash { position: fixed; inset: 0; background: #fff3dc; opacity: 0; pointer-events: none; }
   #flash.go { animation: flash 0.7s ease-out; }
   @keyframes flash { from { opacity: 0.95; } to { opacity: 0; } }
-  .card { width: min(560px, 100%); max-height: 100%; overflow: auto; }
+  .card { width: min(680px, 100%); max-height: 100%; overflow: auto; }
   h1 { font-size: clamp(44px, 9vw, 76px); line-height: 0.95; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.03em; }
   .sub { color: var(--dim); font-size: 17px; margin: 0 0 26px; line-height: 1.45; }
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 14px; margin-bottom: 26px; }
@@ -93,6 +97,7 @@
     <div class="modes">
       <button class="mode" id="mode-landing"><b>1 · Landing</b><span>Ten kilometers out, off-center, in a crosswind. About 2.5 minutes.</span><em id="best-landing"></em></button>
       <button class="mode" id="mode-full"><b>2 · Full Flight</b><span>Take off, fly out over the sea, come back and land. About 11 minutes.</span><em id="best-full"></em></button>
+      <button class="mode" id="mode-athens"><b>3 · Athens</b><span>Tel Aviv to Athens, with a new airport at the end. About 14 minutes.</span><em id="best-athens"></em></button>
     </div>
     <div class="keys">
       <b>↓ / ↑</b><span>Pull back / push forward</span>
@@ -125,6 +130,30 @@
 </div>
 
 <div id="pause" class="overlay">Paused</div>
+
+<div id="cruise" class="overlay">
+  <h2>Cruising at 35,000 ft</h2>
+  <svg viewBox="0 0 500 340" role="img" aria-label="Map of the eastern Mediterranean showing the flight from Tel Aviv to Athens">
+    <rect width="500" height="340" fill="#123a55"/>
+    <g fill="#c9b98a" stroke="#e6d9b0" stroke-width="0.6">
+      <path d="M90 0 L150 0 L170 30 L150 46 L140 34 L124 44 L136 66 L120 74 L128 94 L112 84 L100 104 L116 118 L108 138 L96 128 L86 146 L74 120 L66 96 L52 70 L60 34 Z"/>
+      <path d="M170 30 L500 0 L500 118 L440 128 L392 146 L340 130 L290 150 L240 142 L196 130 L176 104 L190 84 L168 62 Z"/>
+      <path d="M128 176 L172 170 L208 178 L204 186 L160 186 L130 186 Z"/>
+      <path d="M348 186 L388 172 L398 176 L376 192 L352 196 Z"/>
+      <path d="M500 150 L424 160 L402 212 L388 262 L372 306 L350 340 L500 340 Z"/>
+      <path d="M0 340 L0 290 L90 310 L200 300 L300 316 L350 340 Z"/>
+    </g>
+    <line x1="372" y1="262" x2="128" y2="92" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <line id="map-trail" x1="372" y1="262" x2="372" y2="262" stroke="#ffb347" stroke-width="2.5"/>
+    <circle cx="372" cy="262" r="4" fill="#f4f1ea"/>
+    <circle cx="128" cy="92" r="4" fill="#f4f1ea"/>
+    <text x="384" y="266" fill="#f4f1ea" font-size="14" font-weight="600">Tel Aviv</text>
+    <text x="74" y="88" fill="#f4f1ea" font-size="14" font-weight="600" text-anchor="end">Athens</text>
+    <circle id="map-plane" cx="372" cy="262" r="6" fill="#ffb347"/>
+  </svg>
+  <p id="cruise-eta"></p>
+  <p>Space to skip ahead</p>
+</div>
 
 <script>
   // If the game can't start, say so instead of leaving dead buttons.

@@ -18,7 +18,7 @@ export function canLeaveSeat(g) {
   return g.phase === 'approach' && wheelHeight(g.s, g.ac) / FT > LEAVE_SEAT_FT && !nearLanding(g);
 }
 
-const nearLanding = (g) => (g.route ? g.route.final || g.route.leg >= 7 : false);
+const nearLanding = (g) => (g.route ? g.route.final || g.route.leg >= g.route.legs.length - 1 : false);
 
 /** The autopilot won't land for you: it calls you back to the cockpit first. */
 export function mustReturn(g) {

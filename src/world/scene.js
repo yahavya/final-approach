@@ -7,6 +7,7 @@ import { createRunway } from './runway.js';
 import { createAirliner } from './airliner.js';
 import { createExplosion } from './explosion.js';
 import { createCabin } from './cabin.js';
+import { createAthens } from './athens.js';
 import { b737 } from '../sim/aircraft/b737.js';
 
 const COCKPIT_FOV = 58;
@@ -320,15 +321,23 @@ export function createWorld(canvas, initialAircraft) {
   sea.position.set(-40000, -2, 0);
   scene.add(sea);
 
-  scene.add(landMesh(new THREE.MeshLambertMaterial({ color: 0xd9c49a }), 70, -1.2));
-  scene.add(landMesh(new THREE.MeshLambertMaterial({ map: groundTexture() }), 0, -0.6));
-
-  addFields(scene);
-  addCity(scene);
-  addAirport(scene);
+  // Each airport has its own world, in its own frame.
+  const groundMaterial = new THREE.MeshLambertMaterial({ map: groundTexture() });
+  const telAviv = new THREE.Group();
+  scene.add(telAviv);
+  telAviv.add(landMesh(new THREE.MeshLambertMaterial({ color: 0xd9c49a }), 70, -1.2));
+  telAviv.add(landMesh(groundMaterial, 0, -0.6));
+  addFields(telAviv);
+  addCity(telAviv);
+  addAirport(telAviv);
   addClouds(scene);
 
-  const runway = createRunway(scene);
+  const athens = createAthens(groundMaterial);
+  athens.visible = false;
+  scene.add(athens);
+
+  const runways = { tlv: createRunway(telAviv), ath: createRunway(athens, ['03', '21']) };
+  let runway = runways.tlv;
 
   let airliner = createAirliner(ac);
   scene.add(airliner);
@@ -374,6 +383,13 @@ export function createWorld(canvas, initialAircraft) {
 
   return {
     isCockpit: () => cockpit && !crashSite && !pose,
+
+    /** Shows the world around one airport. */
+    setAirport(id) {
+      telAviv.visible = id === 'tlv';
+      athens.visible = id === 'ath';
+      runway = runways[id];
+    },
 
     /** Swaps in a different airplane. */
     setAircraft(next) {

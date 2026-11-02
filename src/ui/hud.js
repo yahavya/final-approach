@@ -237,7 +237,7 @@ export function createHud(canvas) {
       const km = Math.hypot(leg.x - s.pos[0], leg.z - s.pos[2]) / 1000;
       const legNumber = g.route.leg + 1;
       const altText = leg.path ? 'glide path' : `${leg.altFt} ft`;
-      text(`Leg ${legNumber} of 8: ${leg.name}`, w - 22, 26, 14, 'right', '#ff9df5');
+      text(`Leg ${legNumber} of ${g.route.legs.length}: ${leg.name}`, w - 22, 26, 14, 'right', '#ff9df5');
       text(`${km.toFixed(1)} km · ${altText} · ${legSpeed(leg, g.ac)} kt`, w - 22, 46, 13, 'right', '#ff9df5');
 
       marker(world, [leg.x, leg.path ? 200 : leg.altFt * FT, leg.z]);
@@ -310,7 +310,7 @@ export function createHud(canvas) {
       }
 
       const kt = s.V / KT;
-      const altFt = s.pos[1] / FT + RUNWAY.thresholdElevationFt - 12;
+      const altFt = s.pos[1] / FT + g.airport.thresholdElevationFt - 12;
       const vsFpm = s.vel[1] / 0.00508;
       const slow = s.alpha > (g.ac.alphaStall - 3) * DEG;
       const leg = g.route ? currentLeg(g) : null;
@@ -329,7 +329,7 @@ export function createHud(canvas) {
 
       // Glide path and centerline, full scale at about 0.7 and 2.5 degrees.
       const aimDistance = RUNWAY.aimPoint - s.pos[0];
-      const onFinal = !g.route || g.route.leg >= 5;
+      const onFinal = !g.route || g.route.leg >= g.route.legs.length - 3;
       if (g.phase === 'approach' && aimDistance > 300 && onFinal) {
         const angle = Math.atan2(s.pos[1] - g.ac.gearHeight, aimDistance) / DEG;
         const toRunway = Math.atan2(-s.pos[2], aimDistance + RUNWAY.length * 0.8) / DEG;
@@ -348,7 +348,7 @@ export function createHud(canvas) {
       text(gearText, cx - tapeGap + 4, bottom - 30, 12, 'left', s.gearDown > 0.95 ? GREEN : AMBER);
       text(`FLAPS ${g.ac.flapNames[flapIndex]}`, cx - tapeGap + 4, bottom - 12, 12, 'left', GREEN);
 
-      const heading = ((RUNWAY.headingTrue + e.heading / DEG) % 360 + 360) % 360;
+      const heading = ((g.airport.headingTrue + e.heading / DEG) % 360 + 360) % 360;
       text(`HDG ${String(Math.round(heading) % 360).padStart(3, '0')}`, cx - tapeGap - 8, cy - tapeH / 2 - 14, 13, 'center');
       if (g.conditions) {
         const across = qRotateInv(s.q, s.wind)[2] / KT;

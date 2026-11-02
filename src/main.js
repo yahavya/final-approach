@@ -2,7 +2,7 @@
 
 import { AIRCRAFT, findAircraft } from './sim/aircraft/index.js';
 import { DT } from './sim/flightModel.js';
-import { createGame, tick } from './game/scenario.js';
+import { beginArrival, createGame, tick } from './game/scenario.js';
 import { createBot } from './game/bot.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from './game/autopilot.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from './game/walk.js';
@@ -59,11 +59,13 @@ function writeCoachSetting(on) {
 
 let coachOn = readCoachSetting();
 let coach = createCoach();
-let mode = params.get('mode') === 'full' ? 'full' : 'landing';
+let mode = ['full', 'athens'].includes(params.get('mode')) ? params.get('mode') : 'landing';
 let game = createGame(aircraft, { distance, mode });
 let bot = botMode ? createBot() : null;
 let screen = 'title'; // title, flying, paused, result
 let accumulator = 0;
+let cruiseLeft = 0;
+const CRUISE_SECONDS = 12;
 let walker = null;
 let walkerBot = null;
 let seatMessage = '';
@@ -98,10 +100,10 @@ function setCoach(on) {
 }
 
 function showBest() {
-  const landing = readBest('landing');
-  const full = readBest('full');
-  el('best-landing').textContent = landing ? `Best ${landing}` : '';
-  el('best-full').textContent = full ? `Best ${full}` : '';
+  for (const m of ['landing', 'full', 'athens']) {
+    const best = readBest(m);
+    el(`best-${m}`).textContent = best ? `Best ${best}` : '';
+  }
 }
 
 function start(nextMode = mode) {
@@ -110,6 +112,9 @@ function start(nextMode = mode) {
   // ?calm=1 keeps still air, for practicing the flare on its own.
   const conditions = params.has('calm') ? undefined : createConditions(Date.now() % 2147483646);
   game = createGame(aircraft, { distance, mode, conditions });
+  world.setAirport('tlv');
+  el('cruise').classList.remove('show');
+  cruiseLeft = 0;
   world.resetCrash();
   hud.clear();
   bot = botMode ? createBot() : null;
@@ -126,11 +131,35 @@ function start(nextMode = mode) {
   if (!bot) analytics.event('flight_start', { game_mode: mode, aircraft: aircraft.shortName });
   audio.unlock();
   audio.stopApplause();
+  // ?arrive=1 skips straight to the Athens arrival, for testing it.
+  if (mode === 'athens' && params.has('arrive')) finishCruise();
   audio.setRunning(true);
+}
+
+function showCruise(progress) {
+  const start = { x: 372, y: 262 };
+  const end = { x: 128, y: 92 };
+  const plane = el('map-plane');
+  plane.setAttribute('cx', start.x + (end.x - start.x) * progress);
+  plane.setAttribute('cy', start.y + (end.y - start.y) * progress);
+  const trail = el('map-trail');
+  trail.setAttribute('x2', plane.getAttribute('cx'));
+  trail.setAttribute('y2', plane.getAttribute('cy'));
+  const minutes = Math.ceil((1 - progress) * 80);
+  el('cruise-eta').textContent = minutes > 1 ? `Athens in ${minutes} minutes` : 'Beginning descent';
+}
+
+function finishCruise() {
+  cruiseLeft = 0;
+  beginArrival(game);
+  world.setAirport('ath');
+  el('cruise').classList.remove('show');
+  el('cruise-eta').textContent = '';
 }
 
 function backToTitle() {
   screen = 'title';
+  el('cruise').classList.remove('show');
   if (walker) { walker = null; world.setWalker(null); }
   audio.stopApplause();
   audio.setRunning(false);
@@ -158,7 +187,7 @@ function showResult(r) {
   const best = readBest(mode);
   let sub = r.missed ? 'No landing, no score. Going around was the safe call.' : `Grade ${r.grade}`;
   if (coachOn) sub += ' · Coach on';
-  if (mode === 'full') {
+  if (mode !== 'landing') {
     const minutes = Math.floor(game.time / 60);
     sub += ` · ${minutes}:${String(Math.floor(game.time % 60)).padStart(2, '0')} flight`;
   }
@@ -185,6 +214,12 @@ function showResult(r) {
 function handleEvents() {
   for (const e of game.events) {
     audio.handle(e);
+    if (e.type === 'cruise') {
+      if (walker) backInSeat();
+      cruiseLeft = CRUISE_SECONDS;
+      showCruise(0);
+      el('cruise').classList.add('show');
+    }
     if (e.type === 'touchdown') shake = Math.min(1, e.sinkFpm / 500);
     if (e.type === 'tailstrike') shake = 1;
     if (e.type === 'finished') {
@@ -225,6 +260,10 @@ window.addEventListener('keydown', (e) => {
     start('landing');
   } else if (screen === 'title' && e.code === 'Digit2') {
     start('full');
+  } else if (screen === 'title' && e.code === 'Digit3') {
+    start('athens');
+  } else if (e.code === 'Space' && game.phase === 'cruise') {
+    finishCruise();
   } else if (e.code === 'Escape') {
     if (screen === 'flying') setPaused(true);
     else if (screen === 'paused') setPaused(false);
@@ -245,6 +284,7 @@ document.querySelectorAll('.plane').forEach((b) => {
 });
 el('mode-landing').addEventListener('click', () => start('landing'));
 el('mode-full').addEventListener('click', () => start('full'));
+el('mode-athens').addEventListener('click', () => start('athens'));
 
 function autopilot() {
   const c = game.s.contact;
@@ -284,6 +324,12 @@ function advance(frameTime) {
     seatMessage = 'Captain to the flight deck: landing soon';
     seatMessageUntil = performance.now() + 4000;
   }
+  if (game.phase === 'cruise') {
+    cruiseLeft -= frameTime;
+    showCruise(1 - Math.max(0, cruiseLeft) / CRUISE_SECONDS);
+    if (cruiseLeft <= 0) finishCruise();
+    return;
+  }
   if (!bot && !walker) input.apply(game, frameTime);
   accumulator += Math.min(frameTime, 0.1);
   while (accumulator >= DT) {
@@ -315,7 +361,7 @@ function frame(now) {
   shake = Math.max(0, shake - frameTime * 2.2);
   const buffet = game.s.stall > 0 || game.s.alpha > (game.ac.alphaStall - 2) * (Math.PI / 180) ? 0.25 : 0;
   world.update(game, Math.max(shake, buffet), now / 1000);
-  if (game.result && EXPLOSIVE.has(game.result.failure)) {
+  if ((game.result && EXPLOSIVE.has(game.result.failure)) || game.phase === 'cruise') {
     hud.clear();
   } else if (walker) {
     const flying = !(game.s.contact.mainL || game.s.contact.mainR || game.s.contact.nose);

@@ -4,7 +4,7 @@
 import { b737 } from '../src/sim/aircraft/b737.js';
 import { DT, GRAVITY, solveTrim, stallSpeed, step } from '../src/sim/flightModel.js';
 import { DEG, eulerFrom, FPM, KT, qAxis } from '../src/sim/math.js';
-import { createGame, RUNWAY, tick } from '../src/game/scenario.js';
+import { beginArrival, createGame, RUNWAY, tick } from '../src/game/scenario.js';
 import { createBot, flyBot } from '../src/game/bot.js';
 import { scoreLanding, sinkLabel } from '../src/game/scoring.js';
 import { createInput } from '../src/ui/input.js';
@@ -98,8 +98,9 @@ export function coachedPilot(reactionMs, gameOpts = {}, onFrame = null, ac = b73
   let sinceLook = reactionMs;
   let seen = 0;
 
-  const limit = (gameOpts.mode === 'full' ? 1500 : 240) / frame;
+  const limit = (gameOpts.mode ? 1500 : 240) / frame;
   for (let f = 0; f < limit && g.phase !== 'finished'; f++) {
+    if (g.phase === 'cruise') beginArrival(g);
     sinceLook += frame * 1000;
     if (sinceLook >= reactionMs) {
       sinceLook = 0;
@@ -576,6 +577,39 @@ export function allTests() {
     hb.controls.elevator = 0.2;
     handBack(hb);
     check('Handing back centers the stick', hb.controls.elevator === 0);
+  }
+
+  // Tel Aviv to Athens
+  for (const ac of [b737, a320, b747]) {
+    const name = ac.shortName;
+    const g = createGame(ac, { mode: 'athens' });
+    const bot = createBot();
+    let cruised = false;
+    let arrivalDrop = 0;
+    let arrivalStart = null;
+    runSteps(g, 1500, () => {
+      if (g.phase === 'cruise') { cruised = true; beginArrival(g); arrivalStart = g.s.pos[1]; }
+      if (arrivalStart != null && g.time) arrivalDrop = Math.max(arrivalDrop, arrivalStart - g.s.pos[1]);
+      flyAuto(bot, g);
+    });
+    const r = g.result;
+    check(`${name}: reaches the cruise and arrives at Athens`, cruised && g.airport.id === 'ath', `${g.airport.id}, ${g.phase}`);
+    check(`${name}: bot lands at Athens`, r && !r.failure && !r.missed, r ? `${r.headline}, score ${r.score}, ${(g.time / 60).toFixed(1)} min` : `no result, leg ${g.route.leg}, ${g.phase}, x ${g.s.pos[0].toFixed(0)}, z ${g.s.pos[2].toFixed(0)}, ${(g.s.pos[1] * 3.28).toFixed(0)} ft`);
+
+    const start = createGame(ac, { mode: 'athens' });
+    beginArrival(start);
+    const p0 = eulerFrom(start.s.q).pitch;
+    runSteps(start, 15);
+    const drift = Math.abs(eulerFrom(start.s.q).pitch - p0) / DEG;
+    check(`${name}: the arrival starts trimmed`, drift < 3 && start.phase === 'approach', `${drift.toFixed(2)}°`);
+    check(`${name}: arriving doesn't jolt the passengers`, start.passengers.comfort > 95, `comfort ${start.passengers.comfort.toFixed(0)}%`);
+
+    for (const seed of [2, 5]) {
+      const c = coachedPilot(300, { mode: 'athens', conditions: createConditions(seed) }, null, ac);
+      const cr = c.result;
+      check(`${name}: following the coach reaches Athens, wind ${seed}`, cr && !cr.failure && !cr.missed && c.airport.id === 'ath',
+        cr ? `${cr.headline}, score ${cr.score}, ${(c.time / 60).toFixed(1)} min` : `no result, leg ${c.route.leg}, ${c.phase}`);
+    }
   }
 
   // The reason the A320 is here: same abuse, different outcome
