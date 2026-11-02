@@ -30,9 +30,11 @@ export function createAnalytics() {
     document.head.append(script);
   }
 
+  let onTitle = true;
+
   function show() {
     const choice = readChoice();
-    bar.classList.toggle('show', enabled && !choice);
+    bar.classList.toggle('show', enabled && !choice && onTitle);
     toggle.hidden = !enabled || !choice;
     toggle.textContent = choice === 'accepted' ? 'Analytics on: turn off' : 'Analytics off: turn on';
   }
@@ -54,6 +56,12 @@ export function createAnalytics() {
   show();
 
   return {
+    /** The prompt only appears on the title screen, never over a flight. */
+    setOnTitle(value) {
+      onTitle = value;
+      show();
+    },
+
     /** Records a game event. Does nothing without consent. */
     event(name, params = {}) {
       if (gtag) gtag('event', name, params);

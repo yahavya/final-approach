@@ -114,6 +114,7 @@ function start(nextMode = mode) {
   shake = 0;
   screen = 'flying';
   el('title').classList.remove('show');
+  analytics.setOnTitle(false);
   el('keybar').classList.add('show');
   el('result').classList.remove('show');
   el('pause').classList.remove('show');
@@ -135,6 +136,7 @@ function backToTitle() {
   el('pause').classList.remove('show');
   el('keybar').classList.remove('show');
   el('title').classList.add('show');
+  analytics.setOnTitle(true);
   showBest();
 }
 
