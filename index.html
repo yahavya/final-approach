@@ -83,6 +83,7 @@
   <div class="card">
     <h1>Final Approach</h1>
     <p class="sub">Three airliners at Ben Gurion. Put them down gently.</p>
+    <p id="load-error" hidden style="color:var(--amber);font-weight:600">The game didn't load. Please refresh this page.</p>
     <div class="planes">
       <button class="plane" data-id="b737">737</button>
       <button class="plane" data-id="a320">A320</button>
@@ -125,6 +126,14 @@
 
 <div id="pause" class="overlay">Paused</div>
 
-<script type="module" src="./src/main.js"></script>
+<script>
+  // If the game can't start, say so instead of leaving dead buttons.
+  window.addEventListener('error', (e) => {
+    if (window.__fa || !e.filename || !e.filename.includes('/src/')) return;
+    const note = document.getElementById('load-error');
+    if (note) note.hidden = false;
+  });
+</script>
+<script type="module" src="./src/main.js?v=3"></script>
 </body>
 </html>

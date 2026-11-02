@@ -17,6 +17,7 @@ export function createAnalytics() {
   const notice = document.getElementById('analytics-notice');
   const toggle = document.getElementById('analytics-toggle');
   let gtag = null;
+  if (!notice || !toggle) return { event() {} };
 
   function load() {
     if (gtag) return;

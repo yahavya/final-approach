@@ -14,7 +14,7 @@ import { createWorld } from './world/scene.js';
 import { createHud } from './ui/hud.js';
 import { createAudio } from './ui/audio.js';
 import { createInput } from './ui/input.js';
-import { createAnalytics } from './ui/analytics.js';
+import { createAnalytics } from './ui/analytics.js?v=3';
 
 const params = new URLSearchParams(location.search);
 const botMode = params.has('bot');
@@ -31,7 +31,13 @@ const world = createWorld(view, aircraft);
 const hud = createHud(document.getElementById('hud'));
 const audio = createAudio();
 const input = createInput();
-const analytics = createAnalytics();
+// Analytics must never be able to stop the game from starting.
+let analytics = { event() {} };
+try {
+  analytics = createAnalytics();
+} catch (error) {
+  console.warn('Analytics unavailable', error);
+}
 
 const el = (id) => document.getElementById(id);
 
