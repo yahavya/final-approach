@@ -66,6 +66,7 @@ let bot = botMode ? createBot() : null;
 let screen = 'title'; // title, flying, paused, result
 let accumulator = 0;
 let emergencyBot = null;
+let ignoreSwitchesUntil = 0;
 let cruiseLeft = 0;
 const CRUISE_SECONDS = 12;
 let walker = null;
@@ -339,6 +340,7 @@ function leaveSeat() {
 let bangAt = 0;
 
 function endFight() {
+  ignoreSwitchesUntil = performance.now() + 1500;
   world.setWalker(null);
   world.setAttacker(null);
   handBack(game);
@@ -368,8 +370,11 @@ function advance(frameTime) {
     if (cruiseLeft <= 0) finishCruise();
     return;
   }
-  if (fighting) input.discardSwitches();
-  else if (!bot && !walker) input.apply(game, frameTime);
+  // People keep hammering for a moment after they win, so X stays dead briefly.
+  if (fighting || performance.now() < ignoreSwitchesUntil) input.discardSwitches();
+  if (fighting) {
+    // the autopilot is flying, below
+  } else if (!bot && !walker) input.apply(game, frameTime);
   accumulator += Math.min(frameTime, 0.1);
   while (accumulator >= DT) {
     if (bot) flyAuto(bot, game);

@@ -14,8 +14,8 @@ function wing(material, span, rootChord, tipChord, sweep, thickness) {
   return new THREE.Mesh(geo, material);
 }
 
-function cylinderX(rTop, rBottom, length, material, segments = 20) {
-  const geo = new THREE.CylinderGeometry(rTop, rBottom, length, segments);
+function cylinderX(rTop, rBottom, length, material, segments = 20, open = false) {
+  const geo = new THREE.CylinderGeometry(rTop, rBottom, length, segments, 1, open);
   geo.rotateZ(-Math.PI / 2);
   return new THREE.Mesh(geo, material);
 }
@@ -33,18 +33,18 @@ export function createAirliner(ac) {
   const paint = new THREE.MeshLambertMaterial({ color: spec.fin, side: THREE.DoubleSide });
 
   const radius = 1.95;
-  const body = cylinderX(radius, radius, 27, white);
+  const body = cylinderX(radius, radius, 27, white, 20, true); // open: you can stand inside
   body.position.x = 1;
   g.add(body);
 
-  const nose = cylinderX(0.3, radius, 5, white);
+  const nose = cylinderX(0.3, radius, 5, white, 20, true);
   nose.position.x = 17;
   g.add(nose);
   const noseTip = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), white);
   noseTip.position.x = 19.5;
   g.add(noseTip);
 
-  const tail = cylinderX(radius, 0.4, 8.5, white);
+  const tail = cylinderX(radius, 0.4, 8.5, white, 20, true);
   tail.position.x = -16.7;
   tail.position.y = 0.55;
   g.add(tail);
@@ -56,7 +56,7 @@ export function createAirliner(ac) {
   root.userData.windscreen = windscreen;
 
   if (spec.hump) {
-    const hump = cylinderX(1.25, 1.25, 11, white);
+    const hump = cylinderX(1.25, 1.25, 11, white, 20, true);
     hump.position.set(11, 1.75, 0);
     g.add(hump);
     const humpNose = new THREE.Mesh(new THREE.SphereGeometry(1.25, 14, 10), white);
