@@ -99,6 +99,7 @@ function showBest() {
 }
 
 function start(nextMode = mode) {
+  if (analytics.waiting()) return;
   mode = nextMode;
   if (walker) { walker = null; world.setWalker(null); }
   // ?calm=1 keeps still air, for practicing the flare on its own.

@@ -56,6 +56,11 @@ export function createAnalytics() {
   show();
 
   return {
+    /** True until a visitor on the live site has answered. Blocks starting a flight. */
+    waiting() {
+      return enabled && !readChoice();
+    },
+
     /** The prompt only appears on the title screen, never over a flight. */
     setOnTitle(value) {
       onTitle = value;

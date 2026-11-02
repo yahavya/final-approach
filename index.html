@@ -25,12 +25,15 @@
   .mode span { display: block; color: var(--dim); font-size: 13px; line-height: 1.35; }
   .mode em { display: block; color: var(--amber); font-style: normal; font-size: 13px; font-weight: 600; margin-top: 8px; min-height: 1em; }
   @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } }
-  #consent { position: fixed; left: 16px; right: 16px; bottom: 36px; margin: 0 auto; max-width: 620px; display: none; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; line-height: 1.4; backdrop-filter: blur(10px); }
+  #consent { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 12, 16, 0.72); }
   #consent.show { display: flex; }
-  #consent span { flex: 1 1 280px; color: var(--ink); }
-  #consent button, #consent-toggle { font: inherit; font-size: 13px; color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-  #consent #consent-accept { color: #10141a; background: var(--amber); border-color: var(--amber); font-weight: 600; }
+  #consent-card { width: min(420px, 100%); padding: 24px; background: #151b23; border: 1px solid var(--line); border-radius: 14px; }
+  #consent h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.01em; }
+  #consent p { margin: 0 0 18px; color: var(--dim); font-size: 15px; line-height: 1.45; }
+  #consent-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #consent button { font: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: #252d38; border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; }
+  #consent button:hover, #consent button:focus-visible { border-color: var(--amber); outline: none; }
+  #consent-toggle { font: inherit; font-size: 13px; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
   #consent-toggle { margin-top: 12px; color: var(--dim); }
   #flash { position: fixed; inset: 0; background: #fff3dc; opacity: 0; pointer-events: none; }
   #flash.go { animation: flash 0.7s ease-out; }
@@ -130,10 +133,15 @@
 
 <div id="pause" class="overlay">Paused</div>
 
-<div id="consent">
-  <span>This game can use Google Analytics cookies to count players and flights. The game works the same if you decline.</span>
-  <button id="consent-decline">Decline</button>
-  <button id="consent-accept">Accept</button>
+<div id="consent" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+  <div id="consent-card">
+    <h2 id="consent-title">Before you fly</h2>
+    <p>Can we use Google Analytics cookies to count players and flights? The game works the same either way.</p>
+    <div id="consent-buttons">
+      <button id="consent-decline">Decline</button>
+      <button id="consent-accept">Accept</button>
+    </div>
+  </div>
 </div>
 
 <script type="module" src="./src/main.js"></script>
