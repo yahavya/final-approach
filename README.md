@@ -22,6 +22,7 @@ To run it locally:
 | Z / X | Flaps up / down |
 | C | Cockpit / chase view |
 | V | Get up and walk the cabin, when parked or above 1,500 ft |
+| E | Talk to a passenger, while walking |
 | H | Coach on / off |
 | A | Change airplane, on the title screen |
 | M | Back to the title screen, when paused or finished |

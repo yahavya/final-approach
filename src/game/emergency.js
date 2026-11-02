@@ -10,6 +10,7 @@ const START_METER = 40;
 const GRACE_SECONDS = 1.5; // time to spin around and start hitting keys
 const PER_PRESS = 6;
 const DRAIN = 22; // per second: nearly 4 presses a second just holds your ground
+const AFTERMATH_SECONDS = 3.5;
 const MIN_FEET = 3000;
 const CHANCE = 0.65;
 
@@ -23,7 +24,7 @@ export function createHijack(at) {
   return { type: 'hijack', at, stage: 'waiting', time: 0, meter: START_METER, presses: 0, won: false };
 }
 
-export const emergencyActive = (e) => !!e && (e.stage === 'warning' || e.stage === 'fight');
+export const emergencyActive = (e) => !!e && ['warning', 'fight', 'aftermath'].includes(e.stage);
 
 export const canStart = (e, flightTime, feet, nearLanding) => e.stage === 'waiting' && flightTime >= e.at
   && feet > MIN_FEET && !nearLanding;
@@ -40,7 +41,7 @@ export function mash(e) {
   e.meter = Math.min(100, e.meter + PER_PRESS);
 }
 
-/** Advances the emergency. Returns 'fight', 'won' or 'lost' on the step that happens. */
+/** Advances the emergency. Returns 'fight', 'won', 'lost' or 'settled' on the step that happens. */
 export function updateEmergency(e, dt) {
   if (!emergencyActive(e)) return null;
   e.time += dt;
@@ -50,8 +51,14 @@ export function updateEmergency(e, dt) {
     e.time = 0;
     return 'fight';
   }
-  if (e.meter >= 100) {
+  if (e.stage === 'aftermath') {
+    if (e.time < AFTERMATH_SECONDS) return null;
     e.stage = 'over';
+    return 'settled';
+  }
+  if (e.meter >= 100) {
+    e.stage = 'aftermath';
+    e.time = 0;
     e.won = true;
     return 'won';
   }
@@ -68,11 +75,15 @@ export const fightLeft = (e) => Math.max(0, FIGHT_SECONDS - e.time);
 
 /** Camera pose in the body frame: you jump up behind the seats to face the door. */
 export function fightPose(e, ac) {
-  const turn = e.stage === 'fight' ? smoothstep(0, TURN_SECONDS, e.time) : 0;
+  const turn = e.stage === 'aftermath' ? 1 : e.stage === 'fight' ? smoothstep(0, TURN_SECONDS, e.time) : 0;
   return {
     x: ac.eye[0] - turn * 0.95, // clear of the seats, or the seat back fills the view
     y: ac.eye[1] + turn * 0.2,
     z: lerp(ac.eye[2], 0, turn),
     yaw: turn * Math.PI,
+    pitch: e.stage === 'aftermath' ? -0.62 * smoothstep(0.2, 1.1, e.time) : 0, // looking down at them
   };
 }
+
+/** How far through falling over the attacker is, from 0 to 1. */
+export const fallProgress = (e) => smoothstep(0, 0.9, e.time);

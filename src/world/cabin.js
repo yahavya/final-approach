@@ -173,7 +173,7 @@ function buildPeople(g, l) {
   const f = l.cabinFloor;
 
   /** Poses everyone for a mood. Runs a few times a second, only while you're inside. */
-  return function pose(moodName, time, walkerX, walkerZ) {
+  return function pose(moodName, time, walkerX, walkerZ, speaker = -1) {
     people.forEach((p, i) => {
       const t = time + p.phase;
       const x = p.x - 0.02;
@@ -228,6 +228,11 @@ function buildPeople(g, l) {
         hx = x + 0.2;
         gap = 0.2;
       }
+      if (i === speaker) {
+        // Whoever you're talking to raises a hand.
+        hx = x + 0.25;
+        hy = f + 1.5 + Math.sin(t * 5) * 0.03;
+      }
       q.identity();
       v.set(hx, hy, p.z - gap);
       m.compose(v, q, one);
@@ -276,8 +281,21 @@ function buildAttacker(g, ac, l) {
       armL.rotation.z = 1.1 + swing * 0.5;
       armR.rotation.z = 1.1 - swing * 0.5;
     },
+    /** t runs from 0, standing at the door, to 1, restrained on the floor by the wall. */
+    down(t, doorSide) {
+      figure.visible = true;
+      const standX = l.doorX + 0.1;
+      const lieX = l.doorX + 2.0;
+      figure.position.set(standX + (lieX - standX) * t, l.deckFloor + 0.22 * t, doorSide * t);
+      figure.rotation.z = (Math.PI / 2) * t; // head toward the door, feet toward the nose
+      armL.position.set(0.0, 1.3, -0.24);
+      armR.position.set(0.0, 1.3, 0.24);
+      armL.rotation.z = 2.8 * t + 1.1 * (1 - t);
+      armR.rotation.z = 2.8 * t + 1.1 * (1 - t);
+    },
     hide() {
       figure.visible = false;
+      figure.rotation.z = 0;
     },
   };
 }

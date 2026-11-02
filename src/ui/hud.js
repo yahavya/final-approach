@@ -374,12 +374,23 @@ export function createHud(canvas) {
       text('YOU WIN AT FULL', x + barW, y + 38, 12, 'right', GREEN);
     },
 
+    /** After the fight, looking down at the attacker. */
+    drawAftermath() {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(8,12,16,0.72)';
+      ctx.beginPath();
+      ctx.roundRect(w / 2 - 230, 26, 460, 88, 12);
+      ctx.fill();
+      text('Attacker subdued', w / 2, 56, 30, 'center', GREEN);
+      text('Press V once you\'re back in your seat to check on the cabin', w / 2, 92, 14, 'center', '#f4f1ea');
+    },
+
     banner(message) {
       text(message, w / 2, h * 0.24, 20, 'center', AMBER);
     },
 
     /** The little that's shown while you're out of your seat. */
-    drawWalk(g, row, moodName, flying, warning) {
+    drawWalk(g, row, moodName, flying, warning, canTalk, talk) {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = 'rgba(8,12,16,0.72)';
       ctx.beginPath();
@@ -394,6 +405,26 @@ export function createHud(canvas) {
       text(`${g.passengers.count} passengers · ${moodName} · comfort ${Math.round(g.passengers.comfort)}%`, 22, 50, 13, 'left', 'rgba(244,241,234,0.8)');
       if (warning) text(warning, w / 2, 70, 24, 'center', AMBER);
       text('↑ ↓ walk   ← → look   V back to your seat', w / 2, h - 44, 14, 'center', '#f4f1ea');
+      if (canTalk && !talk) {
+        ctx.fillStyle = 'rgba(8,12,16,0.72)';
+        ctx.beginPath();
+        ctx.roundRect(w / 2 - 110, h - 100, 220, 32, 8);
+        ctx.fill();
+        text('E  talk to this passenger', w / 2, h - 84, 14, 'center', AMBER);
+      }
+      if (talk) {
+        const width = Math.min(w - 32, 560);
+        ctx.fillStyle = 'rgba(248,245,238,0.96)';
+        ctx.beginPath();
+        ctx.roundRect(w / 2 - width / 2, h - 170, width, 92, 12);
+        ctx.fill();
+        text(`Seat ${talk.who}`, w / 2 - width / 2 + 18, h - 150, 13, 'left', '#6b6f76');
+        ctx.font = '600 19px -apple-system, "Helvetica Neue", sans-serif';
+        ctx.fillStyle = '#14181f';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`"${talk.line}"`, w / 2 - width / 2 + 18, h - 116, width - 36);
+      }
     },
 
     draw(g, world, stick, advice) {

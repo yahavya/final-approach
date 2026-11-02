@@ -11,6 +11,7 @@ import { createInput } from '../src/ui/input.js';
 import { createCoach } from '../src/game/coach.js';
 import { flyRoute, turnText, turnTo } from '../src/game/route.js';
 import { createHijack, emergencyActive, mash, planEmergency } from '../src/game/emergency.js';
+import { chatterLine, chatterTopic, nearestPassenger, seatName, topics } from '../src/game/chatter.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopilot.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from '../src/game/walk.js';
 import { cabinLayout } from '../src/game/cabinLayout.js';
@@ -652,6 +653,58 @@ export function allTests() {
     input.discardSwitches();
     input.apply(flaps, 1 / 60);
     check('Hammering X in a fight doesn\'t move the flaps', flaps.controls.flap === 0);
+  }
+
+  // After the fight
+  {
+    const g = createGame(b737, { mode: 'athens', emergency: createHijack(1) });
+    beginArrival(g);
+    const bot = createBot();
+    const stages = new Set();
+    let next = 0;
+    runSteps(g, 30, (gm) => {
+      flyAuto(bot, gm);
+      const e = gm.emergency;
+      stages.add(e.stage);
+      if (e.stage === 'fight' && e.time >= next) { mash(e); next = e.time + 1 / 7; }
+    });
+    check('Winning goes through the aftermath, then you fly on', stages.has('aftermath') && g.emergency.stage === 'over' && g.phase === 'approach', [...stages].join(', '));
+    check('You can\'t get up until it\'s over, then you can', canLeaveSeat(g), g.emergency.stage);
+    check('After the fight, passengers talk about it', chatterTopic(g, 'calm') === 'afterFight', chatterTopic(g, 'calm'));
+  }
+
+  // Talking to passengers
+  for (const ac of [b737, a320, b747]) {
+    const w = createWalker(ac);
+    const l = w.l;
+    check(`${ac.shortName}: nobody to talk to on the flight deck`, nearestPassenger(w) === null);
+    w.rising = false;
+    w.x = l.frontRowX - 4;
+    w.z = l.aisle;
+    const near = nearestPassenger(w);
+    check(`${ac.shortName}: someone to talk to in the aisle`, !!near, near ? seatName(l, near.seat) : 'none');
+    const seats = l.seats.filter((s) => s.taken);
+    check(`${ac.shortName}: seat names look right`, /^[0-9]+[A-K]$/.test(seatName(l, seats[0])), seatName(l, seats[0]));
+  }
+  {
+    const seat = { phase: 2.5 };
+    let filled = true;
+    for (const topic of topics) for (let i = 0; i < 12; i++) if (typeof chatterLine(topic, seat, i) !== 'string') filled = false;
+    check('Every topic always has a line', filled, `${topics.length} topics`);
+    check('Asking again gets a different line', chatterLine('cruise', seat, 0) !== chatterLine('cruise', seat, 1));
+    check('Different passengers say different things', chatterLine('cruise', { phase: 0.4 }, 0) !== chatterLine('cruise', { phase: 3.3 }, 0));
+
+    const parked = createGame(b737, { mode: 'full' });
+    runSteps(parked, 2);
+    check('On the runway they ask why we aren\'t moving', chatterTopic(parked, 'calm') === 'parked', chatterTopic(parked, 'calm'));
+    const up = createGame(b737);
+    check('In the air they make small talk', chatterTopic(up, 'calm') === 'cruise', chatterTopic(up, 'calm'));
+    check('In rough air they worry', chatterTopic(up, 'scared') === 'scared');
+    const arrived = createGame(b737, { mode: 'athens' });
+    beginArrival(arrived);
+    check('Over Greece they talk about Athens', chatterTopic(arrived, 'calm') === 'athens', chatterTopic(arrived, 'calm'));
+    const landed = land();
+    check('After a good landing they\'re happy', chatterTopic(landed, 'calm') === 'landed', chatterTopic(landed, 'calm'));
   }
 
   // Directions

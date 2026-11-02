@@ -167,6 +167,7 @@ function runEmergency(g) {
     applaud(g, 6);
     g.events.push({ type: 'subdued', score: 90 });
   }
+  if (outcome === 'settled') g.events.push({ type: 'settled' });
   if (outcome === 'lost') finish(g, 'hijacked');
 }
 

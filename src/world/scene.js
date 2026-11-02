@@ -349,6 +349,7 @@ export function createWorld(canvas, initialAircraft) {
   scene.add(cabin.group);
   let pose = null; // set while you're out of your seat
   let peopleClock = 0;
+  let speaker = -1;
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2),
@@ -416,6 +417,16 @@ export function createWorld(canvas, initialAircraft) {
       else cabin.attacker.show(closest, time);
     },
 
+    /** The attacker falling, then restrained on the floor for the rest of the flight. */
+    setAttackerDown(t) {
+      cabin.attacker.down(t, 1.02);
+    },
+
+    /** Which passenger is talking to you, or -1. */
+    setSpeaker(index) {
+      speaker = index;
+    },
+
     /** Blows up the airplane and moves the camera outside to watch. */
     explode(s) {
       crashSite = [...s.pos];
@@ -473,9 +484,10 @@ export function createWorld(canvas, initialAircraft) {
         camera.position.set(s.pos[0] + local[0], s.pos[1] + local[1], s.pos[2] + local[2]);
         yawQ.setFromAxisAngle(up, pose.yaw);
         camera.quaternion.copy(bodyQ).multiply(yawQ).multiply(toCamera);
+        if (pose.pitch) camera.rotateX(pose.pitch);
         if (time - peopleClock > 0.06) {
           peopleClock = time;
-          cabin.pose(cabinMood, time, pose.x, pose.z);
+          cabin.pose(cabinMood, time, pose.x, pose.z, speaker);
         }
       } else if (crashSite) {
         const a = time * 0.22;
