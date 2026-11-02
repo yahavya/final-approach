@@ -34,6 +34,10 @@ Every flight gets its own crosswind, gusts and slightly off-center start, so the
 
 Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
 
+## Privacy
+
+The live site uses Google Analytics to count players and flights, only for visitors who accept. Declining changes nothing in the game, and the choice can be changed on the title screen.
+
 ## How it works
 
 - `src/sim/` is the flight model: forces, gear and aircraft data, with no graphics.

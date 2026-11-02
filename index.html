@@ -25,6 +25,13 @@
   .mode span { display: block; color: var(--dim); font-size: 13px; line-height: 1.35; }
   .mode em { display: block; color: var(--amber); font-style: normal; font-size: 13px; font-weight: 600; margin-top: 8px; min-height: 1em; }
   @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } }
+  #consent { position: fixed; left: 16px; right: 16px; bottom: 36px; margin: 0 auto; max-width: 620px; display: none; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font-size: 13px; line-height: 1.4; backdrop-filter: blur(10px); }
+  #consent.show { display: flex; }
+  #consent span { flex: 1 1 280px; color: var(--ink); }
+  #consent button, #consent-toggle { font: inherit; font-size: 13px; color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  #consent #consent-accept { color: #10141a; background: var(--amber); border-color: var(--amber); font-weight: 600; }
+  #consent-toggle { margin-top: 12px; color: var(--dim); }
   #flash { position: fixed; inset: 0; background: #fff3dc; opacity: 0; pointer-events: none; }
   #flash.go { animation: flash 0.7s ease-out; }
   @keyframes flash { from { opacity: 0.95; } to { opacity: 0; } }
@@ -108,6 +115,7 @@
       <b>A</b><span>Change airplane, on this screen</span>
       <b>M</b><span>Back to this screen, when paused or finished</span>
     </div>
+    <button id="consent-toggle" hidden></button>
   </div>
 </div>
 
@@ -121,6 +129,12 @@
 </div>
 
 <div id="pause" class="overlay">Paused</div>
+
+<div id="consent">
+  <span>This game can use Google Analytics cookies to count players and flights. The game works the same if you decline.</span>
+  <button id="consent-decline">Decline</button>
+  <button id="consent-accept">Accept</button>
+</div>
 
 <script type="module" src="./src/main.js"></script>
 </body>

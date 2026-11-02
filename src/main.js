@@ -14,6 +14,7 @@ import { createWorld } from './world/scene.js';
 import { createHud } from './ui/hud.js';
 import { createAudio } from './ui/audio.js';
 import { createInput } from './ui/input.js';
+import { createAnalytics } from './ui/analytics.js';
 
 const params = new URLSearchParams(location.search);
 const botMode = params.has('bot');
@@ -30,6 +31,7 @@ const world = createWorld(view, aircraft);
 const hud = createHud(document.getElementById('hud'));
 const audio = createAudio();
 const input = createInput();
+const analytics = createAnalytics();
 
 const el = (id) => document.getElementById(id);
 
@@ -115,6 +117,7 @@ function start(nextMode = mode) {
   el('keybar').classList.add('show');
   el('result').classList.remove('show');
   el('pause').classList.remove('show');
+  if (!bot) analytics.event('flight_start', { game_mode: mode, aircraft: aircraft.shortName });
   audio.unlock();
   audio.stopApplause();
   audio.setRunning(true);
@@ -180,6 +183,13 @@ function handleEvents() {
     if (e.type === 'tailstrike') shake = 1;
     if (e.type === 'finished') {
       resultTimer = 1.6;
+      if (!bot) {
+        const r = e.result;
+        const about = { game_mode: mode, aircraft: aircraft.shortName };
+        if (r.missed) analytics.event('go_around', about);
+        else if (r.failure) analytics.event('crash', { ...about, reason: r.failure });
+        else analytics.event('landing', { ...about, score: r.score, coach: coachOn });
+      }
       if (!e.result.failure && !e.result.missed) audio.handle({ type: 'applause', score: e.result.score });
       if (EXPLOSIVE.has(e.result.failure)) {
         resultTimer = 4.2;
