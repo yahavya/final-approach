@@ -268,13 +268,13 @@ function buildAttacker(g, ac, l) {
     /** closest runs from 0 at the door to 1 right at your seat. */
     show(closest, time) {
       figure.visible = true;
-      const x = l.doorX + 0.3 + (ac.eye[0] - 1.25 - l.doorX - 0.3) * closest;
+      const x = l.doorX + 0.1 + (ac.eye[0] - 2.0 - l.doorX - 0.1) * closest;
       figure.position.set(x + Math.sin(time * 13) * 0.04, l.deckFloor, Math.sin(time * 7) * 0.08);
       const swing = Math.sin(time * 15);
-      armL.position.set(0.22, 1.42, -0.24);
-      armR.position.set(0.22, 1.42, 0.24);
-      armL.rotation.z = 1.5 + swing * 0.5;
-      armR.rotation.z = 1.5 - swing * 0.5;
+      armL.position.set(0.2, 1.36, -0.25);
+      armR.position.set(0.2, 1.36, 0.25);
+      armL.rotation.z = 1.1 + swing * 0.5;
+      armR.rotation.z = 1.1 - swing * 0.5;
     },
     hide() {
       figure.visible = false;

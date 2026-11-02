@@ -66,11 +66,11 @@ export function updateEmergency(e, dt) {
 /** Seconds of fight left, for the screen. */
 export const fightLeft = (e) => Math.max(0, FIGHT_SECONDS - e.time);
 
-/** Camera pose in the body frame: you twist around in your seat to face the door. */
+/** Camera pose in the body frame: you jump up behind the seats to face the door. */
 export function fightPose(e, ac) {
   const turn = e.stage === 'fight' ? smoothstep(0, TURN_SECONDS, e.time) : 0;
   return {
-    x: ac.eye[0] - turn * 0.35,
+    x: ac.eye[0] - turn * 0.95, // clear of the seats, or the seat back fills the view
     y: ac.eye[1] + turn * 0.2,
     z: lerp(ac.eye[2], 0, turn),
     yaw: turn * Math.PI,
