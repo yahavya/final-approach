@@ -5,6 +5,8 @@ import { wheelHeight } from '../sim/gear.js';
 import { flyBot } from './bot.js';
 import { flyRoute } from './route.js';
 
+import { emergencyActive } from './emergency.js';
+
 const LEAVE_SEAT_FT = 1500;
 const RETURN_FT = 1250;
 
@@ -13,6 +15,7 @@ const groundSpeed = (g) => Math.hypot(g.s.vel[0], g.s.vel[2]);
 
 /** You can get up when parked, or high enough for the autopilot to have it. */
 export function canLeaveSeat(g) {
+  if (emergencyActive(g.emergency)) return false;
   if (g.phase === 'finished') return true;
   if (onGround(g)) return groundSpeed(g) < 0.7;
   return g.phase === 'approach' && wheelHeight(g.s, g.ac) / FT > LEAVE_SEAT_FT && !nearLanding(g);

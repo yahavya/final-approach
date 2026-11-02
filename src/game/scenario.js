@@ -4,6 +4,8 @@
 import { DEG, eulerFrom, FT, KT, qAxis, qMul } from '../sim/math.js';
 import { ATHENS_ARRIVAL, ATHENS_DEPARTURE, createRoute, updateRoute } from './route.js';
 import { windAt } from './conditions.js';
+import { canStart, emergencyActive, startEmergency, updateEmergency } from './emergency.js';
+import { nearLanding } from './autopilot.js';
 import { applaud, createPassengers, jolt, touchdown, updatePassengers } from './passengers.js';
 import { cabinLayout } from './cabinLayout.js';
 import { createState, DT, solveTrim, step } from '../sim/flightModel.js';
@@ -87,6 +89,7 @@ export function createGame(ac, opts = {}) {
     route: null,
     passengers: createPassengers(cabinLayout(ac).passengers),
     conditions: weather,
+    emergency: opts.emergency ?? null,
     fbw: ac.fbw ? createFbw() : null,
     retardNext: 0,
     phase: 'approach', // takeoff -> approach -> rollout -> finished
@@ -149,6 +152,23 @@ function radioCallouts(g, feet) {
 }
 
 const nearAirport = (s) => s.pos[0] > -800 && s.pos[0] < RUNWAY.length + 800 && Math.abs(s.pos[2]) < 300;
+
+function runEmergency(g) {
+  const e = g.emergency;
+  if (g.phase === 'approach' && canStart(e, g.time, wheelHeight(g.s, g.ac) / FT, nearLanding(g))) {
+    startEmergency(e);
+    g.events.push({ type: 'emergency' });
+  }
+  if (!emergencyActive(e)) return;
+  g.passengers.scaredUntil = g.time + 1;
+  const outcome = updateEmergency(e, DT);
+  if (outcome === 'fight') g.events.push({ type: 'doorbreak' });
+  if (outcome === 'won') {
+    applaud(g, 6);
+    g.events.push({ type: 'subdued', score: 90 });
+  }
+  if (outcome === 'lost') finish(g, 'hijacked');
+}
 
 function firstTouchdown(g) {
   const s = g.s;
@@ -229,6 +249,8 @@ export function tick(g) {
   const c = g.controls;
 
   if (g.conditions) s.wind = windAt(g.conditions, g.time, s.pos[1]);
+  if (g.emergency) runEmergency(g);
+  if (g.phase === 'finished') return;
   updatePassengers(g, DT);
 
   // Spoilers rise on their own once the main wheels are down with thrust at idle.

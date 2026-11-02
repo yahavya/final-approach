@@ -240,6 +240,60 @@ function buildPeople(g, l) {
   };
 }
 
+/** The attacker: a plain, faceless figure in dark clothes, and the cockpit door. */
+function buildAttacker(g, ac, l) {
+  const cloth = lit(0x20232a, 0.5);
+  const skin = lit(0x9a8d80, 0.45);
+  const figure = new THREE.Group();
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.17, 0.75, 10), cloth);
+  torso.position.y = 1.15;
+  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.8, 0.34), cloth);
+  legs.position.y = 0.4;
+  const hood = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), cloth);
+  hood.position.y = 1.68;
+  const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.7, 8), cloth);
+  const armR = armL.clone();
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), skin);
+  const handR = handL.clone();
+  armL.add(handL);
+  armR.add(handR);
+  handL.position.y = -0.38;
+  handR.position.y = -0.38;
+  figure.add(torso, legs, hood, armL, armR);
+  figure.visible = false;
+  g.add(figure);
+
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.0, 1.0), lit(0x8d8a80, 0.6));
+  door.position.set(l.doorX + 0.04, l.deckFloor + 1.0, 0);
+  door.visible = false;
+  g.add(door);
+
+  return {
+    /** closest runs from 0 at the door to 1 right at your seat. */
+    show(closest, time) {
+      figure.visible = true;
+      door.visible = false;
+      const x = l.doorX + 0.3 + (ac.eye[0] - 1.25 - l.doorX - 0.3) * closest;
+      figure.position.set(x + Math.sin(time * 13) * 0.04, l.deckFloor, Math.sin(time * 7) * 0.08);
+      const swing = Math.sin(time * 15);
+      armL.position.set(0.22, 1.42, -0.24);
+      armR.position.set(0.22, 1.42, 0.24);
+      armL.rotation.z = 1.5 + swing * 0.5;
+      armR.rotation.z = 1.5 - swing * 0.5;
+    },
+    closedDoor(time) {
+      figure.visible = false;
+      door.visible = true;
+      door.rotation.z = Math.sin(time * 40) * 0.012;
+    },
+    hide() {
+      figure.visible = false;
+      door.visible = false;
+    },
+  };
+}
+
 export function createCabin(ac) {
   const l = cabinLayout(ac);
   const group = new THREE.Group();
@@ -247,7 +301,8 @@ export function createCabin(ac) {
   buildCabinShell(group, l);
   buildSeats(group, l);
   const pose = buildPeople(group, l);
+  const attacker = buildAttacker(group, ac, l);
   group.visible = false;
   pose('calm', 0, 0, 0);
-  return { group, pose };
+  return { group, pose, attacker };
 }

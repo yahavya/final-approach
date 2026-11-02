@@ -26,6 +26,7 @@ const FAILURES = {
   offRunway: 'Left the runway',
   terrain: 'Flew into the ground',
   gearUp: 'Forgot the landing gear',
+  hijacked: 'You lost the cockpit',
 };
 
 /** Linear score: full marks at or under `best`, zero at or beyond `worst`. */

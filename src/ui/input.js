@@ -127,6 +127,11 @@ export function createInput(target = window) {
       }
     },
 
+    /** Drops queued switch presses, so hammering X in a fight can't move the flaps. */
+    discardSwitches() {
+      presses.length = 0;
+    },
+
     /** Walking uses the same keys. */
     walkKeys() {
       return {

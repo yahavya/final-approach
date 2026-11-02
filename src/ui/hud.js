@@ -343,6 +343,36 @@ export function createHud(canvas) {
       ctx.clearRect(0, 0, w, h);
     },
 
+    /** The door alarm, over the normal cockpit view. */
+    drawWarning() {
+      if (Math.floor(performance.now() / 260) % 2 === 0) {
+        ctx.fillStyle = 'rgba(200,24,16,0.2)';
+        ctx.fillRect(0, 0, w, h);
+      }
+      text("SOMEONE'S FORCING THE COCKPIT DOOR", w / 2, h * 0.24, 28, 'center', RED);
+    },
+
+    /** The fight: a tug of war on one bar. */
+    drawFight(e, left) {
+      ctx.clearRect(0, 0, w, h);
+      const pulse = Math.floor(performance.now() / 110) % 2 === 0;
+      const barW = Math.min(w - 48, 620);
+      const x = w / 2 - barW / 2;
+      const y = h - 150;
+      ctx.fillStyle = 'rgba(8,12,16,0.8)';
+      ctx.beginPath();
+      ctx.roundRect(x - 16, y - 66, barW + 32, 118, 12);
+      ctx.fill();
+      text(pulse ? 'HAMMER X' : 'HAMMER  X', w / 2, y - 34, 32, 'center', '#f4f1ea');
+      ctx.fillStyle = 'rgba(255,90,79,0.35)';
+      ctx.fillRect(x, y, barW, 22);
+      ctx.fillStyle = GREEN;
+      ctx.fillRect(x, y, barW * (e.meter / 100), 22);
+      text('ATTACKER', x, y + 38, 12, 'left', RED);
+      text(`${Math.ceil(left)} s`, w / 2, y + 38, 13, 'center', '#f4f1ea');
+      text('YOU WIN AT FULL', x + barW, y + 38, 12, 'right', GREEN);
+    },
+
     banner(message) {
       text(message, w / 2, h * 0.24, 20, 'center', AMBER);
     },

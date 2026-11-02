@@ -410,6 +410,12 @@ export function createWorld(canvas, initialAircraft) {
       if (next) cabinMood = moodName;
     },
 
+    /** The attacker's position, from 0 at the door to 1 at your seat; null hides them. */
+    setAttacker(closest, time) {
+      if (closest == null) cabin.attacker.hide();
+      else cabin.attacker.show(closest, time);
+    },
+
     /** Blows up the airplane and moves the camera outside to watch. */
     explode(s) {
       crashSite = [...s.pos];

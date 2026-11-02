@@ -32,7 +32,9 @@ The coach shows what to press in real time, and it's on until you turn it off. T
 
 Every flight gets its own crosswind, gusts and slightly off-center start, so the airplane will not land itself. Add `?calm=1` for still air and a perfect start, to practice the flare alone.
 
-Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, `?mode=athens` for Athens, plus `&arrive=1` to skip to the Athens arrival, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
+Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, `?mode=athens` for Athens, plus `&arrive=1` to skip to the Athens arrival and `&hijack=1` to trigger a cockpit break-in soon after, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
+
+Longer flights can bring a cockpit break-in. Hammer X to fight off the attacker.
 
 ## Privacy
 

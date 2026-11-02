@@ -6,10 +6,11 @@ import { DT, GRAVITY, solveTrim, stallSpeed, step } from '../src/sim/flightModel
 import { DEG, eulerFrom, FPM, KT, qAxis } from '../src/sim/math.js';
 import { beginArrival, createGame, RUNWAY, tick } from '../src/game/scenario.js';
 import { createBot, flyBot } from '../src/game/bot.js';
-import { scoreLanding, sinkLabel } from '../src/game/scoring.js';
+import { EXPLOSIVE, scoreLanding, sinkLabel } from '../src/game/scoring.js';
 import { createInput } from '../src/ui/input.js';
 import { createCoach } from '../src/game/coach.js';
 import { flyRoute, turnText, turnTo } from '../src/game/route.js';
+import { createHijack, emergencyActive, mash, planEmergency } from '../src/game/emergency.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopilot.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from '../src/game/walk.js';
 import { cabinLayout } from '../src/game/cabinLayout.js';
@@ -591,6 +592,65 @@ export function allTests() {
     hb.controls.elevator = 0.2;
     handBack(hb);
     check('Handing back centers the stick', hb.controls.elevator === 0);
+  }
+
+  // Hijacking
+  {
+    const fight = (pressesPerSecond, ac = b737) => {
+      const g = createGame(ac, { mode: 'athens', emergency: createHijack(1) });
+      beginArrival(g);
+      const bot = createBot();
+      let nextPress = 0;
+      let triggered = false;
+      runSteps(g, 40, (gm) => {
+        flyAuto(bot, gm);
+        const e = gm.emergency;
+        if (e.stage !== 'waiting') triggered = true;
+        if (e.stage === 'fight' && pressesPerSecond > 0 && e.time >= nextPress) {
+          mash(e);
+          nextPress = e.time + 1 / pressesPerSecond;
+        }
+        if (e.stage === 'over') gm.done = true;
+      });
+      return { g, triggered };
+    };
+    const fast = fight(7);
+    check('Hammering X at 7 a second wins the fight', fast.g.emergency.won && !fast.g.result, `meter ${fast.g.emergency.meter.toFixed(0)}, ${fast.g.emergency.presses} presses`);
+    const steady = fight(5);
+    check('5 a second is still enough', steady.g.emergency.won, `${steady.g.emergency.presses} presses in ${steady.g.emergency.time.toFixed(1)} s`);
+    const slow = fight(2);
+    check('2 a second loses the cockpit', slow.g.result && slow.g.result.failure === 'hijacked', slow.g.result && slow.g.result.headline);
+    const none = fight(0);
+    check('Doing nothing loses the cockpit, without an explosion', none.g.result && none.g.result.failure === 'hijacked' && !EXPLOSIVE.has('hijacked'), none.g.result && none.g.result.headline);
+    check('The passengers are frightened during it', fast.triggered && fast.g.passengers.scaredUntil > 0);
+    check('The flight carries on after you win', fast.g.phase === 'approach', fast.g.phase);
+
+    const blocked = createGame(b737, { mode: 'athens', emergency: createHijack(0) });
+    runSteps(blocked, 5);
+    check('It never starts on the ground', blocked.emergency.stage === 'waiting');
+    const seat = createGame(b737, { mode: 'athens', emergency: createHijack(0) });
+    beginArrival(seat);
+    runSteps(seat, 1);
+    check('You can\'t get up mid-fight', emergencyActive(seat.emergency) && !canLeaveSeat(seat), seat.emergency.stage);
+
+    const low = createGame(b737, { emergency: createHijack(0) });
+    runSteps(low, 5);
+    check('It never starts low on a landing approach', low.emergency.stage === 'waiting');
+
+    let some = 0;
+    let n = 0;
+    const rnd = () => { n = (n * 9301 + 49297) % 233280; return n / 233280; };
+    for (let i = 0; i < 400; i++) if (planEmergency(rnd)) some += 1;
+    check('Only some flights have an emergency', some > 200 && some < 340, `${some} of 400`);
+
+    const h = {};
+    const input = createInput({ addEventListener: (t, f) => { h[t] = f; } });
+    const flaps = createGame(b737, { mode: 'full' });
+    flaps.controls.flap = 0;
+    for (let i = 0; i < 5; i++) h.keydown({ code: 'KeyX', preventDefault() {} });
+    input.discardSwitches();
+    input.apply(flaps, 1 / 60);
+    check('Hammering X in a fight doesn\'t move the flaps', flaps.controls.flap === 0);
   }
 
   // Directions

@@ -168,6 +168,24 @@ export function createAudio() {
     }
   }
 
+  /** Two falling tones, repeated: something is very wrong. */
+  function alarm() {
+    if (!ctx) return;
+    for (let i = 0; i < 4; i++) {
+      const at = ctx.currentTime + i * 0.3;
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(i % 2 ? 620 : 880, at);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.1, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.26);
+      osc.connect(gain).connect(master);
+      osc.start(at);
+      osc.stop(at + 0.28);
+    }
+  }
+
   function boom() {
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -242,6 +260,9 @@ export function createAudio() {
       if (e.type === 'tailstrike') thump(1);
       if (e.type === 'explode') { wantRunning = false; boom(); }
       if (e.type === 'applause') clap(e.score);
+      if (e.type === 'bang') thump(0.8);
+      if (e.type === 'hit') thump(0.35);
+      if (e.type === 'alarm') alarm();
     },
 
     update(g) {
