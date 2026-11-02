@@ -419,7 +419,7 @@ export function createWorld(canvas, initialAircraft) {
 
     /** The attacker falling, then restrained on the floor for the rest of the flight. */
     setAttackerDown(t) {
-      cabin.attacker.down(t, 1.02);
+      cabin.attacker.down(t);
     },
 
     /** Which passenger is talking to you, or -1. */

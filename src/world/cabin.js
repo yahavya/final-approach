@@ -281,21 +281,22 @@ function buildAttacker(g, ac, l) {
       armL.rotation.z = 1.1 + swing * 0.5;
       armR.rotation.z = 1.1 - swing * 0.5;
     },
-    /** t runs from 0, standing at the door, to 1, restrained on the floor by the wall. */
-    down(t, doorSide) {
+    /** t runs from 0, standing in the doorway, to 1, restrained across the aisle. */
+    down(t) {
       figure.visible = true;
       const standX = l.doorX + 0.1;
-      const lieX = l.doorX + 2.0;
-      figure.position.set(standX + (lieX - standX) * t, l.deckFloor + 0.22 * t, doorSide * t);
-      figure.rotation.z = (Math.PI / 2) * t; // head toward the door, feet toward the nose
-      armL.position.set(0.0, 1.3, -0.24);
-      armR.position.set(0.0, 1.3, 0.24);
-      armL.rotation.z = 2.8 * t + 1.1 * (1 - t);
-      armR.rotation.z = 2.8 * t + 1.1 * (1 - t);
+      const lieX = l.doorX - 1.55; // the open floor in front of row 1
+      const floor = l.deckFloor + (l.cabinFloor + 0.2 - l.deckFloor) * t;
+      figure.position.set(standX + (lieX - standX) * t, floor, -0.9 * t);
+      figure.rotation.x = (Math.PI / 2) * t;
+      armL.position.set(0.0, 1.36, -0.25);
+      armR.position.set(0.0, 1.36, 0.25);
+      armL.rotation.z = 0.15 + 0.95 * (1 - t);
+      armR.rotation.z = 0.15 + 0.95 * (1 - t);
     },
     hide() {
       figure.visible = false;
-      figure.rotation.z = 0;
+      figure.rotation.x = 0;
     },
   };
 }

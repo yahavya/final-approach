@@ -431,7 +431,10 @@ function frame(now) {
   if (talk) world.setSpeaker(talk.index);
   if (walker) {
     stepWalker(walker, input.walkKeys(), Math.min(frameTime, 0.05));
-    world.setWalker(walkerPose(walker), mood(game.passengers, game.time));
+    const pose = walkerPose(walker);
+    // Glance down at the floor on the way past the attacker.
+    if (game.emergency?.won && walker.x > walker.l.frontRowX) pose.pitch = -0.3;
+    world.setWalker(pose, mood(game.passengers, game.time));
   }
 
   shake = Math.max(0, shake - frameTime * 2.2);
