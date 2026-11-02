@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Final Approach</title>
+<style>
+  :root { --ink: #f4f1ea; --dim: rgba(244, 241, 234, 0.62); --panel: rgba(12, 17, 24, 0.72); --line: rgba(244, 241, 234, 0.18); --amber: #ffb347; --green: #7dffa0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0c1118; color: var(--ink); overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { pointer-events: none; }
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .overlay.show { display: flex; }
+  #title { background: linear-gradient(180deg, rgba(12, 17, 24, 0.25), rgba(12, 17, 24, 0.82)); }
+  .planes { display: flex; gap: 8px; margin-bottom: 8px; }
+  .plane { flex: 1; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
+  .plane.on { border-color: var(--amber); color: var(--amber); }
+  #plane-blurb { color: var(--dim); font-size: 13px; margin: 0 0 14px; min-height: 1.3em; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .mode { text-align: left; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font: inherit; cursor: pointer; }
+  .mode:hover, .mode:focus-visible { border-color: var(--amber); outline: none; }
+  .mode b { display: block; font-size: 18px; margin-bottom: 4px; }
+  .mode span { display: block; color: var(--dim); font-size: 13px; line-height: 1.35; }
+  .mode em { display: block; color: var(--amber); font-style: normal; font-size: 13px; font-weight: 600; margin-top: 8px; min-height: 1em; }
+  @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } }
+  #flash { position: fixed; inset: 0; background: #fff3dc; opacity: 0; pointer-events: none; }
+  #flash.go { animation: flash 0.7s ease-out; }
+  @keyframes flash { from { opacity: 0.95; } to { opacity: 0; } }
+  .card { width: min(560px, 100%); max-height: 100%; overflow: auto; }
+  h1 { font-size: clamp(44px, 9vw, 76px); line-height: 0.95; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.03em; }
+  .sub { color: var(--dim); font-size: 17px; margin: 0 0 26px; line-height: 1.45; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 14px; margin-bottom: 26px; }
+  .keys b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .keys span { color: var(--dim); }
+  .cta { font-size: 17px; font-weight: 600; color: var(--amber); }
+  #best { color: var(--dim); font-size: 14px; margin-top: 10px; }
+  #result .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px; backdrop-filter: blur(10px); }
+  #res-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  #res-head { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  #res-score { font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  #res-sub { color: var(--dim); margin: 6px 0 18px; font-size: 15px; }
+  .row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .row span:last-child { color: var(--dim); white-space: nowrap; }
+  #res-next { margin-top: 18px; color: var(--amber); font-weight: 600; }
+  #keybar { position: fixed; left: 0; right: 0; bottom: 0; display: none; flex-wrap: wrap; justify-content: center; gap: 2px 16px;
+    padding: 5px 12px; font-size: 12px; background: rgba(8, 12, 16, 0.82); pointer-events: none; }
+  #keybar.show { display: flex; }
+  #keybar span { color: var(--dim); white-space: nowrap; }
+  #keybar b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+  #coach-state.on { color: var(--amber); }
+  #pause { background: rgba(12, 17, 24, 0.5); font-size: 28px; font-weight: 600; }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<canvas id="hud"></canvas>
+
+<div id="flash"></div>
+
+<div id="keybar">
+  <span><b>↓ ↑</b>Pitch</span>
+  <span><b>← →</b>Roll</span>
+  <span><b>Q E</b>Rudder</span>
+  <span><b>R F</b>Thrust</span>
+  <span><b>Space</b>Brakes</span>
+  <span><b>T</b>Reverse</span>
+  <span><b>G</b>Gear</span>
+  <span><b>Z X</b>Flaps</span>
+  <span><b>C</b>View</span>
+  <span><b>V</b>Walk</span>
+  <span><b>H</b><span id="coach-state">Coach</span></span>
+  <span><b>Enter</b>Restart</span>
+  <span><b>Esc</b>Pause</span>
+  <span><b>M</b>Menu</span>
+</div>
+
+<div id="title" class="overlay show">
+  <div class="card">
+    <h1>Final Approach</h1>
+    <p class="sub">Three airliners at Ben Gurion. Put them down gently.</p>
+    <div class="planes">
+      <button class="plane" data-id="b737">737</button>
+      <button class="plane" data-id="a320">A320</button>
+      <button class="plane" data-id="b747">747</button>
+    </div>
+    <p id="plane-blurb"></p>
+    <div class="modes">
+      <button class="mode" id="mode-landing"><b>1 · Landing</b><span>Ten kilometers out, off-center, in a crosswind. About 2.5 minutes.</span><em id="best-landing"></em></button>
+      <button class="mode" id="mode-full"><b>2 · Full Flight</b><span>Take off, fly out over the sea, come back and land. About 11 minutes.</span><em id="best-full"></em></button>
+    </div>
+    <div class="keys">
+      <b>↓ / ↑</b><span>Pull back / push forward</span>
+      <b>← / →</b><span>Roll</span>
+      <b>Q / E</b><span>Rudder, and steering on the ground</span>
+      <b>R / F</b><span>Thrust up / down</span>
+      <b>Space</b><span>Brakes</span>
+      <b>T</b><span>Reverse thrust, on the ground</span>
+      <b>G</b><span>Landing gear</span>
+      <b>Z / X</b><span>Flaps up / down</span>
+      <b>C</b><span>Cockpit / chase view</span>
+      <b>V</b><span>Get up and walk the cabin, when parked or above 1,500 ft</span>
+      <b>H</b><span>Coach on / off, with real-time instructions</span>
+      <b>Enter</b><span>Restart</span>
+      <b>Esc</b><span>Pause</span>
+      <b>A</b><span>Change airplane, on this screen</span>
+      <b>M</b><span>Back to this screen, when paused or finished</span>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="overlay">
+  <div class="card">
+    <div id="res-top"><div id="res-head"></div><div id="res-score"></div></div>
+    <div id="res-sub"></div>
+    <div id="res-rows"></div>
+    <div id="res-next">Press Enter to fly it again, or M to change airplane</div>
+  </div>
+</div>
+
+<div id="pause" class="overlay">Paused</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
