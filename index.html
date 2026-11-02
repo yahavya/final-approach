@@ -18,7 +18,7 @@
   .plane { flex: 1; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
   .plane.on { border-color: var(--amber); color: var(--amber); }
   #plane-blurb { color: var(--dim); font-size: 13px; margin: 0 0 14px; min-height: 1.3em; }
-  .modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
   .mode { text-align: left; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font: inherit; cursor: pointer; }
   .mode:hover, .mode:focus-visible { border-color: var(--amber); outline: none; }
   .mode b { display: block; font-size: 18px; margin-bottom: 4px; }
@@ -97,7 +97,8 @@
     <div class="modes">
       <button class="mode" id="mode-landing"><b>1 · Landing</b><span>Ten kilometers out, off-center, in a crosswind. About 2.5 minutes.</span><em id="best-landing"></em></button>
       <button class="mode" id="mode-full"><b>2 · Full Flight</b><span>Take off, fly out over the sea, come back and land. About 11 minutes.</span><em id="best-full"></em></button>
-      <button class="mode" id="mode-athens"><b>3 · Athens</b><span>Tel Aviv to Athens, with a new airport at the end. About 14 minutes.</span><em id="best-athens"></em></button>
+      <button class="mode" id="mode-athens"><b>3 · Athens</b><span>Tel Aviv to Athens, takeoff to landing. About 14 minutes.</span><em id="best-athens"></em></button>
+      <button class="mode" id="mode-emergency"><b>4 · Emergency</b><span>An attacker and a cabin fire on the way back to Ben Gurion. About 8 minutes.</span><em id="best-emergency"></em></button>
     </div>
     <div class="keys">
       <b>↓ / ↑</b><span>Pull back / push forward</span>
@@ -107,9 +108,9 @@
       <b>Space</b><span>Brakes</span>
       <b>T</b><span>Reverse thrust, on the ground</span>
       <b>G</b><span>Landing gear</span>
-      <b>Z / X</b><span>Flaps up / down. X also fights off trouble in the cockpit</span>
+      <b>Z / X</b><span>Flaps up / down. Hammer X to fight off an attacker</span>
       <b>C</b><span>Cockpit / chase view</span>
-      <b>V</b><span>Get up and walk the cabin, when parked or above 1,500 ft. E talks to passengers</span>
+      <b>V</b><span>Get up and walk the cabin, when parked or above 1,500 ft. E talks, or sprays a fire</span>
       <b>H</b><span>Coach on / off, with real-time instructions</span>
       <b>Enter</b><span>Restart</span>
       <b>Esc</b><span>Pause</span>

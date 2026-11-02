@@ -422,6 +422,12 @@ export function createWorld(canvas, initialAircraft) {
       cabin.attacker.down(t);
     },
 
+    /** Flames at a position along the cabin; null puts them out. */
+    setFire(x, strength, time, sprayFrom = null) {
+      if (x == null) cabin.fire.hide();
+      else cabin.fire.show(x, strength, time, sprayFrom);
+    },
+
     /** Which passenger is talking to you, or -1. */
     setSpeaker(index) {
       speaker = index;

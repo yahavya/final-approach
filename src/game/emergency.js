@@ -1,5 +1,5 @@
-// In-flight emergencies. So far, one: someone forces the cockpit door and you
-// have to fight them off by hammering X. Pure logic, so tests can play it.
+// The cockpit break-in: someone forces the door and you have to fight them off
+// by hammering X. Pure logic, so tests can play it.
 
 import { lerp, smoothstep } from '../sim/math.js';
 
@@ -12,13 +12,6 @@ const PER_PRESS = 6;
 const DRAIN = 22; // per second: nearly 4 presses a second just holds your ground
 const AFTERMATH_SECONDS = 3.5;
 const MIN_FEET = 3000;
-const CHANCE = 0.65;
-
-/** Decides whether this flight has an emergency, and when. */
-export function planEmergency(random = Math.random) {
-  if (random() > CHANCE) return null;
-  return createHijack(90 + random() * 200);
-}
 
 export function createHijack(at) {
   return { type: 'hijack', at, stage: 'waiting', time: 0, meter: START_METER, presses: 0, won: false };

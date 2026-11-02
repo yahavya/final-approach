@@ -2,6 +2,18 @@
 // going, and each passenger works through theirs, so pressing E again gets more.
 
 const LINES = {
+  fire: [
+    'FIRE! There\'s a fire back there!',
+    'Do something! Please!',
+    'I can smell the smoke!',
+    'Get it out, Captain, hurry!',
+  ],
+  afterFire: [
+    'You put it out yourself? Wow.',
+    'I think my jacket is singed. Worth it.',
+    'Does the airline know you do this?',
+    'It smells like burnt toast in here.',
+  ],
   afterFight: [
     'Captain, you were incredible! I saw everything.',
     'Thank you. My kids are in row 22. Thank you.',
@@ -66,6 +78,8 @@ const LINES = {
 export function chatterTopic(g, moodName) {
   if (g.result && g.record && g.record.sinkFpm >= 500) return 'hardLanding';
   if (g.result && !g.result.failure && !g.result.missed) return 'landed';
+  if (g.fire && g.fire.stage === 'burning') return 'fire';
+  if (g.fire && g.fire.stage === 'out') return 'afterFire';
   if (g.emergency && g.emergency.won) return 'afterFight';
   if (moodName === 'scared') return 'scared';
   if (moodName === 'nervous') return 'nervous';

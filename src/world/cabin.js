@@ -301,6 +301,74 @@ function buildAttacker(g, ac, l) {
   };
 }
 
+function softSprite(inner, outer) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, inner);
+  g.addColorStop(1, outer);
+  x.fillStyle = g;
+  x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/** Flames, smoke and extinguisher spray, reused for any row. */
+function buildFire(g, l) {
+  const group = new THREE.Group();
+  group.visible = false;
+  g.add(group);
+  const flameTex = softSprite('rgba(255,200,90,1)', 'rgba(255,60,0,0)');
+  const smokeTex = softSprite('rgba(50,48,46,0.8)', 'rgba(50,48,46,0)');
+  const sprayTex = softSprite('rgba(255,255,255,0.9)', 'rgba(255,255,255,0)');
+  const make = (tex, additive) => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, depthWrite: false, fog: false,
+      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    }));
+    group.add(s);
+    return s;
+  };
+  const flames = Array.from({ length: 14 }, () => make(flameTex, true));
+  const smoke = Array.from({ length: 10 }, () => make(smokeTex, false));
+  const spray = Array.from({ length: 10 }, () => make(sprayTex, false));
+
+  return {
+    /** strength runs from 1, fully ablaze, down to 0, out. */
+    show(x, strength, time, sprayFrom) {
+      group.visible = true;
+      flames.forEach((s, i) => {
+        const a = i * 2.4;
+        const rise = ((time * 1.3 + i * 0.17) % 1);
+        s.position.set(x + Math.cos(a) * 0.5, l.cabinFloor + 0.25 + rise * 1.25, l.aisle + 0.75 + Math.sin(a) * 0.45);
+        const size = (0.75 - rise * 0.45) * strength;
+        s.scale.set(size, size * 1.3, 1);
+        s.material.opacity = (1 - rise) * 0.95;
+      });
+      smoke.forEach((s, i) => {
+        const rise = ((time * 0.4 + i * 0.1) % 1);
+        s.position.set(x + Math.sin(i * 1.7) * 0.7 * (1 + rise), l.ceiling - 0.55 + rise * 0.3, l.aisle + 0.5 + Math.cos(i * 2.3) * 0.5);
+        const size = (1 + rise * 1.3) * Math.max(0.3, strength);
+        s.scale.set(size, size * 0.6, 1);
+        s.material.opacity = (1 - rise) * 0.75;
+      });
+      spray.forEach((s, i) => {
+        s.visible = sprayFrom != null;
+        if (sprayFrom == null) return;
+        const t = (time * 2.2 + i * 0.1) % 1;
+        s.position.set(sprayFrom + (x - sprayFrom) * t, l.cabinFloor + 1.1 - t * 0.4, l.aisle + 0.15 + t * 0.55);
+        s.scale.setScalar(0.15 + t * 0.6);
+        s.material.opacity = 0.9 * (1 - t);
+      });
+    },
+    hide() {
+      group.visible = false;
+    },
+  };
+}
+
 export function createCabin(ac) {
   const l = cabinLayout(ac);
   const group = new THREE.Group();
@@ -309,7 +377,8 @@ export function createCabin(ac) {
   buildSeats(group, l);
   const pose = buildPeople(group, l);
   const attacker = buildAttacker(group, ac, l);
+  const fire = buildFire(group, l);
   group.visible = false;
   pose('calm', 0, 0, 0);
-  return { group, pose, attacker };
+  return { group, pose, attacker, fire };
 }

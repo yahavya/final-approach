@@ -374,6 +374,16 @@ export function createHud(canvas) {
       text('YOU WIN AT FULL', x + barW, y + 38, 12, 'right', GREEN);
     },
 
+    /** The fire alarm, seen from the seat. */
+    drawFireAlert(row, left) {
+      if (Math.floor(performance.now() / 400) % 2 === 0) {
+        ctx.fillStyle = 'rgba(200,70,16,0.14)';
+        ctx.fillRect(0, 0, w, h);
+      }
+      text(`FIRE IN THE CABIN, ROW ${row}`, w / 2, h * 0.24, 28, 'center', RED);
+      text(`Press V, run back and hold E to put it out · ${Math.ceil(left)} s`, w / 2, h * 0.24 + 36, 18, 'center', '#f4f1ea');
+    },
+
     /** After the fight, looking down at the attacker. */
     drawAftermath() {
       ctx.clearRect(0, 0, w, h);
@@ -390,7 +400,7 @@ export function createHud(canvas) {
     },
 
     /** The little that's shown while you're out of your seat. */
-    drawWalk(g, row, moodName, flying, warning, canTalk, talk) {
+    drawWalk(g, row, moodName, flying, warning, prompt, talk) {
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = 'rgba(8,12,16,0.72)';
       ctx.beginPath();
@@ -403,14 +413,20 @@ export function createHud(canvas) {
       const status = flying ? `${Math.round(g.s.pos[1] / FT).toLocaleString()} ft · Autopilot on` : 'Parked';
       text(`${place} · ${status}`, 22, 28, 15, 'left', '#f4f1ea');
       text(`${g.passengers.count} passengers · ${moodName} · comfort ${Math.round(g.passengers.comfort)}%`, 22, 50, 13, 'left', 'rgba(244,241,234,0.8)');
-      if (warning) text(warning, w / 2, 70, 24, 'center', AMBER);
-      text('↑ ↓ walk   ← → look   V back to your seat', w / 2, h - 44, 14, 'center', '#f4f1ea');
-      if (canTalk && !talk) {
+      if (warning) {
         ctx.fillStyle = 'rgba(8,12,16,0.72)';
         ctx.beginPath();
-        ctx.roundRect(w / 2 - 110, h - 100, 220, 32, 8);
+        ctx.roundRect(w / 2 - 190, 12, 380, 44, 8);
         ctx.fill();
-        text('E  talk to this passenger', w / 2, h - 84, 14, 'center', AMBER);
+        text(warning, w / 2, 34, 22, 'center', RED);
+      }
+      text('↑ ↓ walk   ← → look   V back to your seat', w / 2, h - 44, 14, 'center', '#f4f1ea');
+      if (prompt && !talk) {
+        ctx.fillStyle = 'rgba(8,12,16,0.72)';
+        ctx.beginPath();
+        ctx.roundRect(w / 2 - 130, h - 100, 260, 32, 8);
+        ctx.fill();
+        text(prompt, w / 2, h - 84, 14, 'center', AMBER);
       }
       if (talk) {
         const width = Math.min(w - 32, 560);

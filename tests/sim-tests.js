@@ -10,7 +10,8 @@ import { EXPLOSIVE, scoreLanding, sinkLabel } from '../src/game/scoring.js';
 import { createInput } from '../src/ui/input.js';
 import { createCoach } from '../src/game/coach.js';
 import { flyRoute, turnText, turnTo } from '../src/game/route.js';
-import { createHijack, emergencyActive, mash, planEmergency } from '../src/game/emergency.js';
+import { createHijack, emergencyActive, mash } from '../src/game/emergency.js';
+import { burning, createFire, fireInReach, fireLeft, fireOut } from '../src/game/fire.js';
 import { chatterLine, chatterTopic, nearestPassenger, seatName, topics } from '../src/game/chatter.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopilot.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from '../src/game/walk.js';
@@ -639,12 +640,6 @@ export function allTests() {
     runSteps(low, 5);
     check('It never starts low on a landing approach', low.emergency.stage === 'waiting');
 
-    let some = 0;
-    let n = 0;
-    const rnd = () => { n = (n * 9301 + 49297) % 233280; return n / 233280; };
-    for (let i = 0; i < 400; i++) if (planEmergency(rnd)) some += 1;
-    check('Only some flights have an emergency', some > 200 && some < 340, `${some} of 400`);
-
     const h = {};
     const input = createInput({ addEventListener: (t, f) => { h[t] = f; } });
     const flaps = createGame(b737, { mode: 'full' });
@@ -653,6 +648,63 @@ export function allTests() {
     input.discardSwitches();
     input.apply(flaps, 1 / 60);
     check('Hammering X in a fight doesn\'t move the flaps', flaps.controls.flap === 0);
+  }
+
+  // Emergency mode
+  for (const ac of [b737, a320, b747]) {
+    const name = ac.shortName;
+    const start = createGame(ac, { mode: 'emergency' });
+    check(`${name}: Emergency starts in the air, gear up`, start.phase === 'approach' && start.s.gearDown === 0 && start.s.pos[1] > 1100, `${(start.s.pos[1] * 3.28).toFixed(0)} ft`);
+    const p0 = eulerFrom(start.s.q).pitch;
+    runSteps(start, 10);
+    check(`${name}: Emergency starts trimmed`, Math.abs(eulerFrom(start.s.q).pitch - p0) / DEG < 3);
+
+    const g = createGame(ac, { mode: 'emergency' });
+    const bot = createBot();
+    runSteps(g, 700, () => flyAuto(bot, g));
+    const r = g.result;
+    check(`${name}: Emergency flies back to Ben Gurion and lands`, r && !r.failure && !r.missed, r ? `${r.headline}, score ${r.score}, ${(g.time / 60).toFixed(1)} min` : `no result, leg ${g.route.leg}, ${g.phase}`);
+
+    const c = coachedPilot(300, { mode: 'emergency', conditions: createConditions(4) }, null, ac);
+    check(`${name}: following the coach lands in Emergency`, c.result && !c.result.failure && !c.result.missed, c.result ? `${c.result.headline}, score ${c.result.score}` : `no result, leg ${c.route.leg}`);
+  }
+
+  // Fire
+  {
+    const play = (holdFrom) => {
+      const g = createGame(b737, { mode: 'emergency', fire: createFire(1, 10) });
+      const bot = createBot();
+      runSteps(g, 110, (gm) => {
+        flyAuto(bot, gm);
+        gm.extinguishing = holdFrom != null && burning(gm.fire) && gm.fire.time > holdFrom;
+      });
+      return g;
+    };
+    const fast = play(20);
+    check('Holding E on the fire puts it out', fast.fire.stage === 'out' && !fast.result, fast.fire.stage);
+    check('The cabin claps when the fire is out', fast.passengers.clapUntil > 0);
+    const never = play(null);
+    check('Ignoring the fire loses the airplane, explosively', never.result && never.result.failure === 'fire' && EXPLOSIVE.has('fire'), never.result && never.result.headline);
+    check('A fire gives you over a minute', never.time > 70, `${never.time.toFixed(0)} s`);
+
+    const f = createFire(0, 5);
+    check('You have to be near the fire', !fireInReach(f, 0, 0));
+    f.stage = 'burning';
+    check('Standing next to it is close enough', fireInReach(f, 1, 0) && !fireInReach(f, 8, 0));
+    check('A fresh fire isn\'t out at all', fireOut(f) === 0 && fireLeft(f) > 60);
+
+    const both = createGame(b737, { mode: 'emergency', emergency: createHijack(1), fire: createFire(1, 10) });
+    runSteps(both, 2);
+    check('The fire waits while you fight the attacker', emergencyActive(both.emergency) && both.fire.stage === 'waiting', `${both.emergency.stage}, ${both.fire.stage}`);
+
+    const calm = createGame(b737, { mode: 'athens' });
+    check('Athens has no emergencies by default', calm.emergency === null && calm.fire === null);
+    const full = createGame(b737, { mode: 'full' });
+    check('Full Flight has no emergencies by default', full.emergency === null && full.fire === null);
+
+    const burningGame = createGame(b737, { mode: 'emergency', fire: createFire(0, 10) });
+    runSteps(burningGame, 2);
+    check('Passengers shout about the fire', chatterTopic(burningGame, 'calm') === 'fire', chatterTopic(burningGame, 'calm'));
   }
 
   // After the fight

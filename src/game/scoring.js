@@ -13,7 +13,7 @@ export const SINK_BANDS = [
 ];
 
 /** Failures big enough to blow the airplane up. */
-export const EXPLOSIVE = new Set(['crash', 'stall', 'terrain', 'wing', 'gearUp']);
+export const EXPLOSIVE = new Set(['crash', 'stall', 'terrain', 'wing', 'gearUp', 'fire']);
 
 export const sinkLabel = (fpm) => SINK_BANDS.find((b) => fpm < b.max).label;
 
@@ -27,6 +27,7 @@ const FAILURES = {
   terrain: 'Flew into the ground',
   gearUp: 'Forgot the landing gear',
   hijacked: 'You lost the cockpit',
+  fire: 'The fire spread out of control',
 };
 
 /** Linear score: full marks at or under `best`, zero at or beyond `worst`. */

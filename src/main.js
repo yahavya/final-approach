@@ -9,7 +9,9 @@ import { createWalker, rowOf, stepWalker, walkerPose } from './game/walk.js';
 import { mood } from './game/passengers.js';
 import { createCoach } from './game/coach.js';
 import { createConditions } from './game/conditions.js';
-import { createHijack, emergencyActive, fallProgress, fightLeft, fightPose, mash, planEmergency } from './game/emergency.js';
+import { createHijack, emergencyActive, fallProgress, fightLeft, fightPose, mash } from './game/emergency.js';
+import { burning, createFire, fireInReach, fireLeft, fireOut } from './game/fire.js';
+import { cabinLayout } from './game/cabinLayout.js';
 import { chatterLine, chatterTopic, nearestPassenger, seatName } from './game/chatter.js';
 import { EXPLOSIVE } from './game/scoring.js';
 import { createWorld } from './world/scene.js';
@@ -61,13 +63,14 @@ function writeCoachSetting(on) {
 
 let coachOn = readCoachSetting();
 let coach = createCoach();
-let mode = ['full', 'athens'].includes(params.get('mode')) ? params.get('mode') : 'landing';
+let mode = ['full', 'athens', 'emergency'].includes(params.get('mode')) ? params.get('mode') : 'landing';
 let game = createGame(aircraft, { distance, mode });
 let bot = botMode ? createBot() : null;
 let screen = 'title'; // title, flying, paused, result
 let accumulator = 0;
 let emergencyBot = null;
 let talks = 0;
+let fireAlarmAt = 0;
 let talk = null; // what a passenger is saying to you
 const TALK_MS = 4500;
 let ignoreSwitchesUntil = 0;
@@ -107,11 +110,34 @@ function setCoach(on) {
 }
 
 function showBest() {
-  for (const m of ['landing', 'full', 'athens']) {
+  for (const m of ['landing', 'full', 'athens', 'emergency']) {
     const best = readBest(m);
     el(`best-${m}`).textContent = best ? `Best ${best}` : '';
   }
 }
+
+/** Only mode 4 has emergencies: the attacker and the fire, in either order. */
+function planTrouble() {
+  if (mode !== 'emergency' || botMode) return {};
+  const layout = cabinLayout(aircraft);
+  const row = 6 + Math.floor(Math.random() * Math.max(1, layout.rows - 10));
+  const hijackFirst = Math.random() < 0.5;
+  const soon = 15 + Math.random() * 20;
+  const later = soon + 45 + Math.random() * 30;
+  // ?hijack=1 or ?fire=1 starts that one after a few seconds, for testing it.
+  return {
+    emergency: createHijack(params.has('hijack') ? 4 : hijackFirst ? soon : later),
+    fire: createFire(params.has('fire') ? 4 : hijackFirst ? later : soon, row),
+  };
+}
+
+const sprayable = () => !!walker && !!game.fire && fireInReach(game.fire, walker.x, fireX());
+
+/** Where the fire is along the airplane. */
+const fireX = () => {
+  const l = cabinLayout(game.ac);
+  return l.frontRowX - (game.fire.row - 1) * l.rowPitch;
+};
 
 /** Talks to whoever is nearest. Pressing again moves the conversation on. */
 function talkToPassenger() {
@@ -131,12 +157,12 @@ function start(nextMode = mode) {
   mode = nextMode;
   talk = null;
   world.setAttacker(null);
+  world.setFire(null);
   if (walker) { walker = null; world.setWalker(null); }
   // ?calm=1 keeps still air, for practicing the flare on its own.
   const conditions = params.has('calm') ? undefined : createConditions(Date.now() % 2147483646);
-  // ?hijack=1 starts one a few seconds in, for testing it.
-  const emergency = botMode ? null : params.has('hijack') ? createHijack(4) : planEmergency();
-  game = createGame(aircraft, { distance, mode, conditions, emergency });
+  const trouble = planTrouble();
+  game = createGame(aircraft, { distance, mode, conditions, ...trouble });
   emergencyBot = createBot();
   world.setAirport('tlv');
   el('cruise').classList.remove('show');
@@ -252,6 +278,16 @@ function handleEvents() {
     if (e.type === 'subdued') {
       audio.handle({ type: 'applause', score: e.score });
     }
+    if (e.type === 'fire') {
+      audio.handle({ type: 'alarm' });
+      fireAlarmAt = performance.now();
+    }
+    if (e.type === 'fireout') {
+      world.setFire(null);
+      audio.handle({ type: 'applause', score: e.score });
+      seatMessage = 'Fire out. Nice work, Captain.';
+      seatMessageUntil = performance.now() + 5000;
+    }
     if (e.type === 'settled') {
       endFight();
       seatMessage = 'Cabin secure. Press V to go and check on the passengers.';
@@ -274,7 +310,7 @@ function handleEvents() {
       if (!bot) {
         const r = e.result;
         const about = { game_mode: mode, aircraft: aircraft.shortName };
-        if (game.emergency && game.emergency.stage === 'over') analytics.event('hijack', { ...about, won: game.emergency.won });
+        if (mode === 'emergency') analytics.event('emergency_result', { ...about, attacker_beaten: !!game.emergency?.won, fire_out: game.fire?.stage === 'out' });
         if (r.missed) analytics.event('go_around', about);
         else if (r.failure) analytics.event('crash', { ...about, reason: r.failure });
         else analytics.event('landing', { ...about, score: r.score, coach: coachOn });
@@ -299,6 +335,8 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   if (e.code === 'Enter') {
     start();
+  } else if (screen === 'title' && e.code === 'Digit4') {
+    start('emergency');
   } else if (screen === 'title' && e.code === 'KeyA') {
     const index = AIRCRAFT.indexOf(aircraft);
     selectAircraft(AIRCRAFT[(index + 1) % AIRCRAFT.length]);
@@ -322,7 +360,7 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyX' && emergencyActive(game.emergency)) {
     mash(game.emergency);
     if (game.emergency.stage === 'fight') audio.handle({ type: 'hit' });
-  } else if (e.code === 'KeyE' && walker && !walker.rising) {
+  } else if (e.code === 'KeyE' && walker && !walker.rising && !sprayable()) {
     talkToPassenger();
   } else if (e.code === 'KeyV' && (screen === 'flying' || screen === 'result')) {
     if (walker) backInSeat();
@@ -338,6 +376,7 @@ document.querySelectorAll('.plane').forEach((b) => {
 el('mode-landing').addEventListener('click', () => start('landing'));
 el('mode-full').addEventListener('click', () => start('full'));
 el('mode-athens').addEventListener('click', () => start('athens'));
+el('mode-emergency').addEventListener('click', () => start('emergency'));
 
 function autopilot() {
   const c = game.s.contact;
@@ -430,13 +469,25 @@ function frame(now) {
   }
   if (talk) world.setSpeaker(talk.index);
   if (walker) {
-    stepWalker(walker, input.walkKeys(), Math.min(frameTime, 0.05));
+    const keys = input.walkKeys();
+    stepWalker(walker, keys, Math.min(frameTime, 0.05));
+    if (game.fire) {
+      game.extinguishing = keys.use && sprayable();
+      if (game.extinguishing && now - fireAlarmAt > 260) {
+        fireAlarmAt = now;
+        audio.handle({ type: 'spray' });
+      }
+    }
     const pose = walkerPose(walker);
     // Glance down at the floor on the way past the attacker.
     if (game.emergency?.won && walker.x > walker.l.frontRowX) pose.pitch = -0.3;
     world.setWalker(pose, mood(game.passengers, game.time));
   }
 
+  if (game.fire && !walker) game.extinguishing = false;
+  if (burning(game.fire)) {
+    world.setFire(fireX(), 1 - fireOut(game.fire) * 0.85, now / 1000, game.extinguishing ? walker.x : null);
+  }
   shake = Math.max(0, shake - frameTime * 2.2);
   const buffet = game.s.stall > 0 || game.s.alpha > (game.ac.alphaStall - 2) * (Math.PI / 180) ? 0.25 : 0;
   world.update(game, Math.max(shake, buffet), now / 1000);
@@ -455,7 +506,11 @@ function frame(now) {
     hud.clear();
   } else if (walker) {
     const flying = !(game.s.contact.mainL || game.s.contact.mainR || game.s.contact.nose);
-    hud.drawWalk(game, rowOf(walker), mood(game.passengers, game.time), flying, '', !!nearestPassenger(walker), talk);
+    const onFire = burning(game.fire);
+    const warning = onFire ? `FIRE, ROW ${game.fire.row} · ${Math.ceil(fireLeft(game.fire))} s` : '';
+    let prompt = nearestPassenger(walker) ? 'E  talk to this passenger' : '';
+    if (sprayable()) prompt = game.extinguishing ? `Spraying: ${Math.round(fireOut(game.fire) * 100)}%` : 'Hold E to spray the fire';
+    hud.drawWalk(game, rowOf(walker), mood(game.passengers, game.time), flying, warning, prompt, talk);
   } else if (screen !== 'title') {
     const showCoach = coachOn && !bot && (screen === 'flying' || screen === 'paused');
     const warning = emergencyActive(em);
@@ -467,7 +522,13 @@ function frame(now) {
         audio.handle({ type: 'bang' });
       }
     }
-    if (now < seatMessageUntil) hud.banner(seatMessage);
+    if (burning(game.fire)) {
+      hud.drawFireAlert(game.fire.row, fireLeft(game.fire));
+      if (now - fireAlarmAt > 3000) {
+        fireAlarmAt = now;
+        audio.handle({ type: 'alarm' });
+      }
+    } else if (now < seatMessageUntil) hud.banner(seatMessage);
   }
   if (screen === 'flying') audio.update(game);
 

@@ -139,6 +139,7 @@ export function createInput(target = window) {
         back: down.has('ArrowDown') || down.has('KeyS'),
         left: down.has('ArrowLeft') || down.has('KeyA'),
         right: down.has('ArrowRight') || down.has('KeyD'),
+        use: down.has('KeyE'),
       };
     },
 

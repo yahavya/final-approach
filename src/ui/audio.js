@@ -186,6 +186,20 @@ export function createAudio() {
     }
   }
 
+  /** A short hiss, repeated while the extinguisher is going. */
+  function spray() {
+    if (!ctx) return;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(0.3);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 2400;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.12;
+    src.connect(filter).connect(gain).connect(master);
+    src.start();
+  }
+
   function boom() {
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -263,6 +277,7 @@ export function createAudio() {
       if (e.type === 'bang') thump(0.8);
       if (e.type === 'hit') thump(0.35);
       if (e.type === 'alarm') alarm();
+      if (e.type === 'spray') spray();
     },
 
     update(g) {

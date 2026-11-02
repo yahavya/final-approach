@@ -22,7 +22,7 @@ To run it locally:
 | Z / X | Flaps up / down |
 | C | Cockpit / chase view |
 | V | Get up and walk the cabin, when parked or above 1,500 ft |
-| E | Talk to a passenger, while walking |
+| E | While walking: talk to a passenger, or hold to spray a fire |
 | H | Coach on / off |
 | A | Change airplane, on the title screen |
 | M | Back to the title screen, when paused or finished |
@@ -33,9 +33,9 @@ The coach shows what to press in real time, and it's on until you turn it off. T
 
 Every flight gets its own crosswind, gusts and slightly off-center start, so the airplane will not land itself. Add `?calm=1` for still air and a perfect start, to practice the flare alone.
 
-Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, `?mode=athens` for Athens, plus `&arrive=1` to skip to the Athens arrival and `&hijack=1` to trigger a cockpit break-in soon after, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
+Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, `?mode=athens` for Athens, plus `&arrive=1` to skip to the Athens arrival, `?mode=emergency` for Emergency, plus `&hijack=1` or `&fire=1` to start that emergency after a few seconds, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
 
-Longer flights can bring a cockpit break-in. Hammer X to fight off the attacker.
+Emergency mode starts in the air on the way back to Ben Gurion, with a cockpit break-in and a cabin fire. Hammer X to fight off the attacker, then run back and hold E to put out the fire.
 
 ## Privacy
 

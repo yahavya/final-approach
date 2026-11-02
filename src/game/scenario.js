@@ -2,10 +2,11 @@
 // Knows nothing about graphics or the keyboard, so tests can drive it directly.
 
 import { DEG, eulerFrom, FT, KT, qAxis, qMul } from '../sim/math.js';
-import { ATHENS_ARRIVAL, ATHENS_DEPARTURE, createRoute, updateRoute } from './route.js';
+import { ATHENS_ARRIVAL, ATHENS_DEPARTURE, createRoute, LEGS, updateRoute } from './route.js';
 import { windAt } from './conditions.js';
 import { canStart, emergencyActive, startEmergency, updateEmergency } from './emergency.js';
 import { nearLanding } from './autopilot.js';
+import { burning, canIgnite, ignite, updateFire } from './fire.js';
 import { applaud, createPassengers, jolt, touchdown, updatePassengers } from './passengers.js';
 import { cabinLayout } from './cabinLayout.js';
 import { createState, DT, solveTrim, step } from '../sim/flightModel.js';
@@ -29,6 +30,7 @@ export const AIRPORTS = {
 };
 
 const ARRIVAL_KT = 230;
+const EMERGENCY_FIRST_LEG = 2;
 
 export const START_DISTANCE = 10000; // m before the threshold
 
@@ -55,6 +57,41 @@ function createFullFlight(ac, base, toAthens) {
       trim: ac.takeoffTrim, // holds the nose down against the engines until you rotate
     },
   };
+}
+
+/** Sets the airplane flying clean and level. heading is its attitude at zero pitch. */
+function placeInFlight(g, pos, heading, speed, direction) {
+  const { ac, s, controls: c } = g;
+  const level = solveTrim(ac, speed, 0, 0, 0);
+  const wind = g.conditions ? windAt(g.conditions, g.time, pos[1]) : [0, 0, 0];
+  s.pos = pos;
+  s.vel = [direction[0] * speed + wind[0], 0, direction[1] * speed + wind[2]];
+  s.q = qMul(heading, qAxis([0, 0, 1], level.alpha));
+  s.w = [0, 0, 0];
+  s.flap = 0;
+  s.gearDown = 0;
+  s.spool = level.lever;
+  s.rev = 0;
+  s.spoilers = 0;
+  c.flap = 0;
+  c.gearDown = false;
+  c.throttle = level.lever;
+  c.trim = level.trim;
+  c.elevator = 0;
+  c.aileron = 0;
+  c.rudder = 0;
+  g.calloutsLeft = [];
+  if (g.fbw) g.fbw.active = false;
+  g.passengers.lastVel = null; // being placed is not a jolt
+  g.phase = 'approach';
+}
+
+/** Mode 4: already in the air off the coast, on the way back to Ben Gurion. */
+function createEmergencyFlight(ac, base) {
+  const g = { ...base, mode: 'emergency', route: createRoute(LEGS, false) };
+  g.route.leg = EMERGENCY_FIRST_LEG;
+  placeInFlight(g, [-13000, 4000 * FT + ac.gearHeight, 0], qAxis([0, 1, 0], Math.PI), 210 * KT + (ac.approachSpeedKt - 145) * KT, [-1, 0]);
+  return g;
 }
 
 export function createGame(ac, opts = {}) {
@@ -90,6 +127,8 @@ export function createGame(ac, opts = {}) {
     passengers: createPassengers(cabinLayout(ac).passengers),
     conditions: weather,
     emergency: opts.emergency ?? null,
+    fire: opts.fire ?? null,
+    extinguishing: false, // set by the player while spraying
     fbw: ac.fbw ? createFbw() : null,
     retardNext: 0,
     phase: 'approach', // takeoff -> approach -> rollout -> finished
@@ -103,6 +142,7 @@ export function createGame(ac, opts = {}) {
     wasStalling: 0,
     sinkWarned: 0,
   };
+  if (opts.mode === 'emergency') return createEmergencyFlight(ac, game);
   return opts.mode === 'full' || opts.mode === 'athens' ? createFullFlight(ac, game, opts.mode === 'athens') : game;
 }
 
@@ -171,6 +211,24 @@ function runEmergency(g) {
   if (outcome === 'lost') finish(g, 'hijacked');
 }
 
+function runFire(g) {
+  const f = g.fire;
+  const busy = emergencyActive(g.emergency);
+  if (g.phase === 'approach' && canIgnite(f, g.time, wheelHeight(g.s, g.ac) / FT, nearLanding(g), busy)) {
+    ignite(f);
+    g.events.push({ type: 'fire' });
+  }
+  if (!burning(f)) return;
+  g.passengers.scaredUntil = g.time + 1;
+  g.passengers.comfort = Math.max(0, g.passengers.comfort - 0.4 * DT);
+  const outcome = updateFire(f, DT, g.extinguishing);
+  if (outcome === 'out') {
+    applaud(g, 6);
+    g.events.push({ type: 'fireout', score: 90 });
+  }
+  if (outcome === 'lost') finish(g, 'fire');
+}
+
 function firstTouchdown(g) {
   const s = g.s;
   const sinkFpm = -s.vel[1] / 0.00508;
@@ -210,36 +268,12 @@ function checkStrikes(g) {
  * Athens' frame, so runway 03R is at the origin and all the landing logic just works.
  */
 export function beginArrival(g) {
-  const { ac, s, controls: c } = g;
-  const V = ARRIVAL_KT * KT + ac.approachSpeedKt - 145;
-  const level = solveTrim(ac, V, 0, 0, 0);
-  const wind = g.conditions ? windAt(g.conditions, g.time, 2400) : [0, 0, 0];
-
+  const { ac } = g;
+  const V = ARRIVAL_KT * KT + (ac.approachSpeedKt - 145) * KT;
   // Heading west across the Aegean, along -z.
-  const heading = qAxis([0, 1, 0], Math.PI / 2);
-  s.pos = [-21000, 7000 * FT + ac.gearHeight, 34000];
-  s.vel = [wind[0], 0, -V + wind[2]];
-  s.q = qMul(heading, qAxis([0, 0, 1], level.alpha));
-  s.w = [0, 0, 0];
-  s.flap = 0;
-  s.gearDown = 0;
-  s.spool = level.lever;
-  s.rev = 0;
-  s.spoilers = 0;
-  c.flap = 0;
-  c.gearDown = false;
-  c.throttle = level.lever;
-  c.trim = level.trim;
-  c.elevator = 0;
-  c.aileron = 0;
-  c.rudder = 0;
-
-  g.passengers.lastVel = null; // the map is not a jolt
+  placeInFlight(g, [-21000, 7000 * FT + ac.gearHeight, 34000], qAxis([0, 1, 0], Math.PI / 2), V, [0, -1]);
   g.airport = AIRPORTS.ath;
   g.route = createRoute(ATHENS_ARRIVAL, false);
-  g.calloutsLeft = [];
-  if (g.fbw) g.fbw.active = false;
-  g.phase = 'approach';
   g.events.push({ type: 'arrival' });
 }
 
@@ -251,6 +285,7 @@ export function tick(g) {
 
   if (g.conditions) s.wind = windAt(g.conditions, g.time, s.pos[1]);
   if (g.emergency) runEmergency(g);
+  if (g.fire) runFire(g);
   if (g.phase === 'finished') return;
   updatePassengers(g, DT);
 
