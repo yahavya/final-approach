@@ -36,7 +36,7 @@ Add `?distance=2000` to the address to start closer, for flare practice, or `?bo
 
 ## Privacy
 
-The live site uses Google Analytics to count players and flights, only for visitors who accept. Declining changes nothing in the game, and the choice can be changed on the title screen.
+The live site uses Google Analytics to count players and flights. It can be turned off on the title screen, and the game works the same either way.
 
 ## How it works
 

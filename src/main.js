@@ -99,7 +99,6 @@ function showBest() {
 }
 
 function start(nextMode = mode) {
-  if (analytics.waiting()) return;
   mode = nextMode;
   if (walker) { walker = null; world.setWalker(null); }
   // ?calm=1 keeps still air, for practicing the flare on its own.
@@ -115,7 +114,6 @@ function start(nextMode = mode) {
   shake = 0;
   screen = 'flying';
   el('title').classList.remove('show');
-  analytics.setOnTitle(false);
   el('keybar').classList.add('show');
   el('result').classList.remove('show');
   el('pause').classList.remove('show');
@@ -137,7 +135,6 @@ function backToTitle() {
   el('pause').classList.remove('show');
   el('keybar').classList.remove('show');
   el('title').classList.add('show');
-  analytics.setOnTitle(true);
   showBest();
 }
 

@@ -1,21 +1,21 @@
-// Google Analytics, loaded only after a visitor accepts, and only on the live
-// site, so local testing isn't counted. Without consent nothing is sent at all.
+// Google Analytics, on the live site only, so local testing isn't counted.
+// It's on by default; the title screen discloses it and has an off button.
 
 const MEASUREMENT_ID = 'G-KZ0X048249';
 const LIVE_HOST = 'yahavya.github.io';
 const CHOICE_KEY = 'final-approach-analytics';
 
-const readChoice = () => {
-  try { return localStorage.getItem(CHOICE_KEY); } catch { return null; }
+const isOff = () => {
+  try { return localStorage.getItem(CHOICE_KEY) === 'declined'; } catch { return false; }
 };
-const writeChoice = (choice) => {
-  try { localStorage.setItem(CHOICE_KEY, choice); } catch { /* it asks again next time */ }
+const setOff = (off) => {
+  try { localStorage.setItem(CHOICE_KEY, off ? 'declined' : 'on'); } catch { /* resets next visit */ }
 };
 
 export function createAnalytics() {
-  const enabled = !!MEASUREMENT_ID && location.hostname === LIVE_HOST;
-  const bar = document.getElementById('consent');
-  const toggle = document.getElementById('consent-toggle');
+  const enabled = location.hostname === LIVE_HOST;
+  const notice = document.getElementById('analytics-notice');
+  const toggle = document.getElementById('analytics-toggle');
   let gtag = null;
 
   function load() {
@@ -30,44 +30,24 @@ export function createAnalytics() {
     document.head.append(script);
   }
 
-  let onTitle = true;
-
   function show() {
-    const choice = readChoice();
-    bar.classList.toggle('show', enabled && !choice && onTitle);
-    toggle.hidden = !enabled || !choice;
-    toggle.textContent = choice === 'accepted' ? 'Analytics on: turn off' : 'Analytics off: turn on';
+    notice.hidden = !enabled;
+    toggle.textContent = isOff() ? 'Turn on' : 'Turn off';
   }
 
-  function choose(choice) {
-    const wasOn = readChoice() === 'accepted';
-    writeChoice(choice);
-    if (choice === 'accepted') load();
-    // Turning it off has to drop the cookies Google already set, so reload.
-    else if (wasOn) location.reload();
-    show();
-  }
+  toggle.addEventListener('click', () => {
+    const turningOff = !isOff();
+    setOff(turningOff);
+    // Turning it off has to stop the tag that's already running, so reload.
+    if (turningOff) location.reload();
+    else { load(); show(); }
+  });
 
-  document.getElementById('consent-accept').addEventListener('click', () => choose('accepted'));
-  document.getElementById('consent-decline').addEventListener('click', () => choose('declined'));
-  toggle.addEventListener('click', () => choose(readChoice() === 'accepted' ? 'declined' : 'accepted'));
-
-  if (enabled && readChoice() === 'accepted') load();
+  if (enabled && !isOff()) load();
   show();
 
   return {
-    /** True until a visitor on the live site has answered. Blocks starting a flight. */
-    waiting() {
-      return enabled && !readChoice();
-    },
-
-    /** The prompt only appears on the title screen, never over a flight. */
-    setOnTitle(value) {
-      onTitle = value;
-      show();
-    },
-
-    /** Records a game event. Does nothing without consent. */
+    /** Records a game event. Does nothing when analytics is off. */
     event(name, params = {}) {
       if (gtag) gtag('event', name, params);
     },
