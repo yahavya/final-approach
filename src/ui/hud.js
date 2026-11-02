@@ -350,6 +350,7 @@ export function createHud(canvas) {
         ctx.fillRect(0, 0, w, h);
       }
       text("SOMEONE'S FORCING THE COCKPIT DOOR", w / 2, h * 0.24, 28, 'center', RED);
+      text('Get ready to hammer X', w / 2, h * 0.24 + 36, 20, 'center', '#f4f1ea');
     },
 
     /** The fight: a tug of war on one bar. */

@@ -6,9 +6,10 @@ import { lerp, smoothstep } from '../sim/math.js';
 const WARNING_SECONDS = 3.2;
 const TURN_SECONDS = 0.5;
 const FIGHT_SECONDS = 12;
-const START_METER = 45;
-const PER_PRESS = 7.5;
-const DRAIN = 24; // per second: about 3 presses a second just holds your ground
+const START_METER = 40;
+const GRACE_SECONDS = 1.5; // time to spin around and start hitting keys
+const PER_PRESS = 6;
+const DRAIN = 22; // per second: nearly 4 presses a second just holds your ground
 const MIN_FEET = 3000;
 const CHANCE = 0.65;
 
@@ -54,7 +55,7 @@ export function updateEmergency(e, dt) {
     e.won = true;
     return 'won';
   }
-  e.meter -= DRAIN * dt;
+  if (e.time > GRACE_SECONDS) e.meter -= DRAIN * dt;
   if (e.meter <= 0 || e.time >= FIGHT_SECONDS) {
     e.stage = 'over';
     return 'lost';

@@ -621,6 +621,7 @@ export function allTests() {
     const slow = fight(2);
     check('2 a second loses the cockpit', slow.g.result && slow.g.result.failure === 'hijacked', slow.g.result && slow.g.result.headline);
     const none = fight(0);
+    check('Doing nothing still gives you time to react', none.g.emergency.time > 3, `${none.g.emergency.time.toFixed(1)} s`);
     check('Doing nothing loses the cockpit, without an explosion', none.g.result && none.g.result.failure === 'hijacked' && !EXPLOSIVE.has('hijacked'), none.g.result && none.g.result.headline);
     check('The passengers are frightened during it', fast.triggered && fast.g.passengers.scaredUntil > 0);
     check('The flight carries on after you win', fast.g.phase === 'approach', fast.g.phase);

@@ -240,7 +240,7 @@ function buildPeople(g, l) {
   };
 }
 
-/** The attacker: a plain, faceless figure in dark clothes, and the cockpit door. */
+/** The attacker: a plain, faceless figure in dark clothes. */
 function buildAttacker(g, ac, l) {
   const cloth = lit(0x20232a, 0.5);
   const skin = lit(0x9a8d80, 0.45);
@@ -264,16 +264,10 @@ function buildAttacker(g, ac, l) {
   figure.visible = false;
   g.add(figure);
 
-  const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.0, 1.0), lit(0x8d8a80, 0.6));
-  door.position.set(l.doorX + 0.04, l.deckFloor + 1.0, 0);
-  door.visible = false;
-  g.add(door);
-
   return {
     /** closest runs from 0 at the door to 1 right at your seat. */
     show(closest, time) {
       figure.visible = true;
-      door.visible = false;
       const x = l.doorX + 0.3 + (ac.eye[0] - 1.25 - l.doorX - 0.3) * closest;
       figure.position.set(x + Math.sin(time * 13) * 0.04, l.deckFloor, Math.sin(time * 7) * 0.08);
       const swing = Math.sin(time * 15);
@@ -282,14 +276,8 @@ function buildAttacker(g, ac, l) {
       armL.rotation.z = 1.5 + swing * 0.5;
       armR.rotation.z = 1.5 - swing * 0.5;
     },
-    closedDoor(time) {
-      figure.visible = false;
-      door.visible = true;
-      door.rotation.z = Math.sin(time * 40) * 0.012;
-    },
     hide() {
       figure.visible = false;
-      door.visible = false;
     },
   };
 }
