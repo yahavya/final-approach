@@ -4,6 +4,10 @@ Fly a Boeing 737-800, Airbus A320-200 or Boeing 747-400 at Ben Gurion in your br
 
 ## Play
 
+**[Play it here](https://yahavya.github.io/final-approach/)**, on a computer with a keyboard.
+
+To run it locally:
+
     ./play.sh
 
 | Key | Action |
