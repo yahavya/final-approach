@@ -573,6 +573,20 @@ export function allTests() {
     runSteps(rough, 40, (gm) => { gm.controls.elevator = Math.sin(gm.time * 1.6); gm.controls.aileron = Math.sin(gm.time * 0.9); });
     check('Throwing the airplane around scares the cabin', rough.passengers.comfort < 70, `comfort ${rough.passengers.comfort.toFixed(0)}%, ${mood(rough.passengers, rough.time)}`);
 
+    const climbing = createGame(b737, { mode: 'athens' });
+    climbing.phase = 'approach';
+    climbing.route.leg = 2;
+    climbing.s.pos = [-20000, 1750, 0];
+    climbing.s.vel = [-120, 2, 0];
+    climbing.s.contact = { mainL: false, mainR: false, nose: false, load: 0 };
+    check('You can get up on the climb toward Athens', canLeaveSeat(climbing) && !mustReturn(climbing));
+
+    const arriving = createGame(b737, { mode: 'athens' });
+    beginArrival(arriving);
+    check('You can get up at the start of the Athens arrival', canLeaveSeat(arriving));
+    arriving.route.leg = arriving.route.legs.length - 1;
+    check('You can\'t get up on the leg that ends in a landing', !canLeaveSeat(arriving) && mustReturn(arriving));
+
     const hb = createGame(a320);
     hb.controls.elevator = 0.2;
     handBack(hb);

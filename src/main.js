@@ -4,7 +4,7 @@ import { AIRCRAFT, findAircraft } from './sim/aircraft/index.js';
 import { DT } from './sim/flightModel.js';
 import { beginArrival, createGame, tick } from './game/scenario.js';
 import { createBot } from './game/bot.js';
-import { canLeaveSeat, flyAuto, handBack, mustReturn } from './game/autopilot.js';
+import { canLeaveSeat, flyAuto, handBack, mustReturn, nearLanding } from './game/autopilot.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from './game/walk.js';
 import { mood } from './game/passengers.js';
 import { createCoach } from './game/coach.js';
@@ -299,7 +299,9 @@ function autopilot() {
 function leaveSeat() {
   if (bot || game.result?.missed) return;
   if (!canLeaveSeat(game)) {
-    seatMessage = game.s.contact.mainL ? 'Stop first, then you can get up' : 'Too low to leave the seat: the autopilot needs 1,500 ft';
+    if (game.s.contact.mainL) seatMessage = 'Stop first, then you can get up';
+    else if (nearLanding(game)) seatMessage = 'Landing soon: stay in your seat';
+    else seatMessage = 'Too low to leave the seat: the autopilot needs 1,500 ft';
     seatMessageUntil = performance.now() + 2500;
     return;
   }
