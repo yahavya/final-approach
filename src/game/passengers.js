@@ -5,7 +5,7 @@ import { clamp, DEG, length, sub } from '../sim/math.js';
 import { GRAVITY } from '../sim/flightModel.js';
 
 export function createPassengers(count) {
-  return { count, comfort: 100, clapUntil: 0, scaredUntil: 0, lastVel: null, load: 1 };
+  return { count, comfort: 100, clapUntil: 0, scaredUntil: 0, lastVel: null, load: 1, steady: 1 };
 }
 
 export function mood(p, time) {
@@ -25,9 +25,12 @@ export function updatePassengers(g, dt) {
     accel[1] += GRAVITY;
     const felt = length(accel) / GRAVITY;
     p.load += (felt - p.load) * clamp(dt * 2, 0, 1); // smoothed: bumps, not noise
-    const rough = Math.max(0, Math.abs(p.load - 1) - 0.2);
-    p.comfort -= rough * 40 * dt;
-    if (rough === 0) p.comfort += 0.12 * dt; // people settle down in smooth air
+    p.steady += (felt - p.steady) * clamp(dt * 0.5, 0, 1); // what a turn or climb feels like
+    // People mind sudden jolts far more than a steady turn.
+    const jolts = Math.max(0, Math.abs(p.load - p.steady) - 0.12);
+    const heavy = Math.max(0, Math.abs(p.steady - 1) - 0.35);
+    p.comfort -= (jolts * 40 + heavy * 16) * dt;
+    if (jolts === 0 && heavy === 0) p.comfort += 0.12 * dt; // people settle down in smooth air
   }
   p.lastVel = [...s.vel];
 
