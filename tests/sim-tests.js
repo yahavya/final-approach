@@ -10,7 +10,7 @@ import { EXPLOSIVE, scoreLanding, sinkLabel } from '../src/game/scoring.js';
 import { createInput } from '../src/ui/input.js';
 import { createCoach } from '../src/game/coach.js';
 import { flyRoute, turnText, turnTo } from '../src/game/route.js';
-import { createHijack, emergencyActive, mash } from '../src/game/emergency.js';
+import { createHijack, emergencyActive, emergencyTimes, mash } from '../src/game/emergency.js';
 import { burning, createFire, fireInReach, fireLeft, fireOut } from '../src/game/fire.js';
 import { chatterLine, chatterTopic, nearestPassenger, seatName, topics } from '../src/game/chatter.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopilot.js';
@@ -701,6 +701,23 @@ export function allTests() {
     check('Athens has no emergencies by default', calm.emergency === null && calm.fire === null);
     const full = createGame(b737, { mode: 'full' });
     check('Full Flight has no emergencies by default', full.emergency === null && full.fire === null);
+
+    let n = 1;
+    const rnd = () => { n = (n * 9301 + 49297) % 233280; return n / 233280; };
+    let firstMax = 0;
+    let gapMin = 1e9;
+    let gapMax = 0;
+    for (let i = 0; i < 200; i++) {
+      const t = emergencyTimes(rnd);
+      firstMax = Math.max(firstMax, t.first);
+      gapMin = Math.min(gapMin, t.second - t.first);
+      gapMax = Math.max(gapMax, t.second - t.first);
+    }
+    check('The first emergency comes within 10 seconds', firstMax <= 10, `${firstMax.toFixed(1)} s`);
+    check('The second follows 35-45 seconds later', gapMin >= 35 && gapMax <= 45, `${gapMin.toFixed(0)}-${gapMax.toFixed(0)} s`);
+    const quick = createGame(b737, { mode: 'emergency', emergency: createHijack(8) });
+    runSteps(quick, 9);
+    check('In Emergency mode, the airplane is high enough to start right away', quick.emergency.stage !== 'waiting', quick.emergency.stage);
 
     const burningGame = createGame(b737, { mode: 'emergency', fire: createFire(0, 10) });
     runSteps(burningGame, 2);

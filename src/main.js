@@ -9,7 +9,7 @@ import { createWalker, rowOf, stepWalker, walkerPose } from './game/walk.js';
 import { mood } from './game/passengers.js';
 import { createCoach } from './game/coach.js';
 import { createConditions } from './game/conditions.js';
-import { createHijack, emergencyActive, fallProgress, fightLeft, fightPose, mash } from './game/emergency.js';
+import { createHijack, emergencyActive, emergencyTimes, fallProgress, fightLeft, fightPose, mash } from './game/emergency.js';
 import { burning, createFire, fireInReach, fireLeft, fireOut } from './game/fire.js';
 import { cabinLayout } from './game/cabinLayout.js';
 import { chatterLine, chatterTopic, nearestPassenger, seatName } from './game/chatter.js';
@@ -122,8 +122,7 @@ function planTrouble() {
   const layout = cabinLayout(aircraft);
   const row = 6 + Math.floor(Math.random() * Math.max(1, layout.rows - 10));
   const hijackFirst = Math.random() < 0.5;
-  const soon = 15 + Math.random() * 20;
-  const later = soon + 45 + Math.random() * 30;
+  const { first: soon, second: later } = emergencyTimes();
   // ?hijack=1 or ?fire=1 starts that one after a few seconds, for testing it.
   return {
     emergency: createHijack(params.has('hijack') ? 4 : hijackFirst ? soon : later),

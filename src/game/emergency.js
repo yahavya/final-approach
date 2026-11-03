@@ -13,6 +13,16 @@ const DRAIN = 22; // per second: nearly 4 presses a second just holds your groun
 const AFTERMATH_SECONDS = 3.5;
 const MIN_FEET = 3000;
 
+/**
+ * When Emergency mode's two emergencies start, in seconds. The first comes
+ * almost at once; the second follows after a short breather. If the first is
+ * still going on, the second waits for it.
+ */
+export function emergencyTimes(random = Math.random) {
+  const first = 6 + random() * 4;
+  return { first, second: first + 35 + random() * 10 };
+}
+
 export function createHijack(at) {
   return { type: 'hijack', at, stage: 'waiting', time: 0, meter: START_METER, presses: 0, won: false };
 }
