@@ -26,7 +26,7 @@ export function createStorm(scene, parts) {
     horizon: new THREE.Color(0x767d84),
     fog: new THREE.Color(0x6e757c),
     density: 0.00016,
-    hemi: 0.95,
+    hemi: 0.7,
     sun: 0.45,
     sea: new THREE.Color(0x24414f),
     cloud: new THREE.Color(0x5f666e),
