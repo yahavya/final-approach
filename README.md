@@ -1,6 +1,6 @@
 # Final Approach
 
-Fly a Boeing 737-800, Airbus A320-200 or Boeing 747-400 at Ben Gurion in your browser. Landing mode starts ten kilometers out on the approach to runway 12. Full Flight takes off from runway 30, flies out over the sea, and comes back to land. Athens flies from Tel Aviv to runway 03R at Athens, with the cruise shown as a map.
+Fly a Boeing 737-800, Airbus A320-200, Boeing 747-400 or F-35A at Ben Gurion in your browser. Landing mode starts ten kilometers out on the approach to runway 12. Full Flight takes off from runway 30, flies out over the sea, and comes back to land. Athens flies from Tel Aviv to runway 03R at Athens, with the cruise shown as a map.
 
 ## Play
 
@@ -35,6 +35,8 @@ The coach shows what to press in real time, and it's on until you turn it off. T
 Every flight gets its own crosswind, gusts and slightly off-center start, so the airplane will not land itself. Add `?calm=1` for still air and a perfect start, to practice the flare alone.
 
 Add `?distance=2000` to the address to start closer, for flare practice, or `?bot=1` to watch the autopilot fly. Add `?mode=full` for Full Flight, `?mode=athens` for Athens, plus `&arrive=1` to skip to the Athens arrival, `?mode=emergency` for Emergency, plus `&hijack=1` or `&fire=1` to start that emergency after a few seconds, or `?aircraft=a320` or `?aircraft=b747` to pick an airplane.
+
+Air Show starts in the air with no route: fly tricks (rolls, loops, inverted flight, knife edge, high-g turns, a low pass), then land on runway 12 to bank them.
 
 Emergency mode starts in the air on the way back to Ben Gurion, with a cockpit break-in and a cabin fire. Hammer X to fight off the attacker, then run back and hold E to put out the fire.
 

@@ -80,7 +80,7 @@ function showWeather() {
 
 let coachOn = readCoachSetting();
 let coach = createCoach();
-let mode = ['full', 'athens', 'emergency'].includes(params.get('mode')) ? params.get('mode') : 'landing';
+let mode = ['full', 'athens', 'emergency', 'airshow'].includes(params.get('mode')) ? params.get('mode') : 'landing';
 let game = createGame(aircraft, { distance, mode });
 let bot = botMode ? createBot() : null;
 let screen = 'title'; // title, flying, paused, result
@@ -127,7 +127,7 @@ function setCoach(on) {
 }
 
 function showBest() {
-  for (const m of ['landing', 'full', 'athens', 'emergency']) {
+  for (const m of ['landing', 'full', 'athens', 'emergency', 'airshow']) {
     const best = readBest(m);
     el(`best-${m}`).textContent = best ? `Best ${best}` : '';
   }
@@ -135,7 +135,7 @@ function showBest() {
 
 /** Only mode 4 has emergencies: the attacker and the fire, in either order. */
 function planTrouble() {
-  if (mode !== 'emergency' || botMode) return {};
+  if (mode !== 'emergency' || botMode || aircraft.passengers === false) return {};
   const layout = cabinLayout(aircraft);
   const row = 6 + Math.floor(Math.random() * Math.max(1, layout.rows - 10));
   const hijackFirst = Math.random() < 0.5;
@@ -255,7 +255,8 @@ function showResult(r) {
   screen = 'result';
   audio.stopEngines();
   el('res-head').textContent = r.headline;
-  el('res-score').textContent = r.missed ? '' : String(r.score);
+  const shown = r.showScore ?? r.score;
+  el('res-score').textContent = r.missed ? '' : shown.toLocaleString();
   const best = readBest(mode);
   let sub = r.missed ? 'No landing, no score. Going around was the safe call.' : `Grade ${r.grade}`;
   if (coachOn) sub += ' · Coach on';
@@ -263,8 +264,8 @@ function showResult(r) {
     const minutes = Math.floor(game.time / 60);
     sub += ` · ${minutes}:${String(Math.floor(game.time % 60)).padStart(2, '0')} flight`;
   }
-  if (!botMode && !r.missed && !r.failure && r.score > best) {
-    writeBest(mode, r.score);
+  if (!botMode && !r.missed && !r.failure && shown > best) {
+    writeBest(mode, shown);
     sub += ' · New best';
   } else if (best) {
     sub += ` · Best ${best}`;
@@ -319,6 +320,10 @@ function handleEvents() {
       showCruise(0);
       el('cruise').classList.add('show');
     }
+    if (e.type === 'trick') {
+      hud.trick(e.name, e.points, e.combo);
+      audio.handle({ type: 'hit' });
+    }
     if (e.type === 'touchdown') shake = Math.min(1, e.sinkFpm / 500);
     if (e.type === 'tailstrike') shake = 1;
     if (e.type === 'finished') {
@@ -335,7 +340,7 @@ function handleEvents() {
         else if (r.failure) analytics.event('crash', { ...about, reason: r.failure });
         else analytics.event('landing', { ...about, score: r.score, coach: coachOn });
       }
-      if (!e.result.failure && !e.result.missed) audio.handle({ type: 'applause', score: e.result.score });
+      if (!e.result.failure && !e.result.missed && game.passengers.count) audio.handle({ type: 'applause', score: e.result.score });
       if (EXPLOSIVE.has(e.result.failure)) {
         resultTimer = 4.2;
         shake = 1;
@@ -359,6 +364,8 @@ window.addEventListener('keydown', (e) => {
     start('emergency');
   } else if (screen === 'title' && e.code === 'KeyW') {
     setStorm(!stormOn);
+  } else if (screen === 'title' && e.code === 'Digit5') {
+    start('airshow');
   } else if (screen === 'title' && e.code === 'KeyA') {
     const index = AIRCRAFT.indexOf(aircraft);
     selectAircraft(AIRCRAFT[(index + 1) % AIRCRAFT.length]);
@@ -400,6 +407,7 @@ el('mode-landing').addEventListener('click', () => start('landing'));
 el('mode-full').addEventListener('click', () => start('full'));
 el('mode-athens').addEventListener('click', () => start('athens'));
 el('mode-emergency').addEventListener('click', () => start('emergency'));
+el('mode-airshow').addEventListener('click', () => start('airshow'));
 
 function autopilot() {
   const c = game.s.contact;

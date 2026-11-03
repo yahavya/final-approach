@@ -20,7 +20,98 @@ function cylinderX(rTop, rBottom, length, material, segments = 20, open = false)
   return new THREE.Mesh(geo, material);
 }
 
+/** A low-poly F-35: blended body, trapezoid wings, twin canted tails, canopy. */
+export function createFighter(ac) {
+  const root = new THREE.Group();
+  const grey = new THREE.MeshLambertMaterial({ color: 0x6f777f });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x3c4249 });
+  const canopy = new THREE.MeshLambertMaterial({ color: 0xa58b4c, emissive: 0x2a2010 });
+
+  const body = cylinderX(0.75, 0.95, 9.5, grey, 8);
+  body.scale.set(1, 0.8, 1.35);
+  root.add(body);
+  const nose = cylinderX(0.05, 0.75, 4, grey, 8);
+  nose.scale.set(1, 0.8, 1.35);
+  nose.position.x = 6.75;
+  root.add(nose);
+  const nozzle = cylinderX(0.62, 0.5, 1.4, dark, 12);
+  nozzle.position.x = -5.4;
+  root.add(nozzle);
+
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.62, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), canopy);
+  glass.scale.set(2.2, 0.75, 0.85);
+  glass.position.set(4.2, 0.55, 0);
+  root.add(glass);
+
+  for (const side of [-1, 1]) {
+    const w = new THREE.Shape();
+    w.moveTo(2.2, 0);
+    w.lineTo(-1.6, 5.35);
+    w.lineTo(-3.4, 5.35);
+    w.lineTo(-3.8, 0);
+    w.closePath();
+    const wing = new THREE.Mesh(new THREE.ExtrudeGeometry(w, { depth: 0.18, bevelEnabled: false }), grey);
+    wing.rotation.x = side * Math.PI / 2;
+    wing.position.set(0, side < 0 ? 0.09 : -0.09, 0);
+    if (side > 0) wing.scale.z = -1;
+    root.add(wing);
+
+    const h = new THREE.Shape();
+    h.moveTo(-4.6, 0);
+    h.lineTo(-6.4, 2.6);
+    h.lineTo(-7.3, 2.6);
+    h.lineTo(-7.0, 0);
+    h.closePath();
+    const stab = new THREE.Mesh(new THREE.ExtrudeGeometry(h, { depth: 0.12, bevelEnabled: false }), grey);
+    stab.rotation.x = side * Math.PI / 2;
+    stab.position.set(0, 0, side * 0.6);
+    root.add(stab);
+
+    const f = new THREE.Shape();
+    f.moveTo(-3.8, 0);
+    f.lineTo(-5.7, 2.2);
+    f.lineTo(-6.6, 2.2);
+    f.lineTo(-6.3, 0);
+    f.closePath();
+    const fin = new THREE.Mesh(new THREE.ExtrudeGeometry(f, { depth: 0.1, bevelEnabled: false }), grey);
+    fin.position.set(0, 0.45, side * 0.9);
+    fin.rotation.x = side * -0.42; // canted outward
+    root.add(fin);
+
+    const intake = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.5), grey);
+    intake.position.set(2.2, 0.05, side * 1.05);
+    root.add(intake);
+  }
+
+  // Afterburner: shown when the throttle is all the way up.
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.45, 3.2, 14, 1, true), flameMat);
+  flame.rotation.z = Math.PI / 2;
+  flame.position.x = -7.6;
+  flame.visible = false;
+  root.add(flame);
+  root.userData.afterburner = flame;
+
+  const gearGroup = new THREE.Group();
+  root.add(gearGroup);
+  root.userData.gear = gearGroup;
+  for (const [name, leg] of Object.entries(ac.gear)) {
+    const [x, y, z] = leg.pos;
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, Math.abs(y) - 0.5, 8), dark);
+    strut.position.set(x, y / 2 - 0.1, z);
+    gearGroup.add(strut);
+    const size = name === 'nose' ? 0.3 : 0.4;
+    const tire = new THREE.Mesh(new THREE.CylinderGeometry(size, size, 0.3, 14), dark);
+    tire.rotation.x = Math.PI / 2;
+    tire.position.set(x, y + size, z);
+    gearGroup.add(tire);
+  }
+  root.userData.windscreen = glass;
+  return root;
+}
+
 export function createAirliner(ac) {
+  if (ac.model.kind === 'fighter') return createFighter(ac);
   const root = new THREE.Group();
   const g = new THREE.Group(); // the airframe, drawn at 737 size and then scaled
   const spec = ac.model;

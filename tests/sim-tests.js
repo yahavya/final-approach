@@ -677,6 +677,46 @@ export function allTests() {
     check('F-35: no cabin to walk', !canLeaveSeat(parked) && parked.passengers.count === 0);
   }
 
+  // Tricks and the Air Show
+  {
+    const show = createGame(f35, { mode: 'airshow' });
+    check('Air Show starts in the air with no route', show.phase === 'approach' && !show.route && show.s.pos[1] > 900);
+    let rolled = 0;
+    runSteps(show, 4, (gm) => { gm.controls.aileron = 1; gm.controls.throttle = 1; rolled += 1; });
+    check('A full roll scores an aileron roll', show.tricks.list.some((x) => x.key === 'roll'), show.tricks.list.map((x) => x.name).join(', '));
+    const loop = createGame(f35, { mode: 'airshow' });
+    let turned = 0;
+    runSteps(loop, 25, (gm) => {
+      gm.controls.throttle = 1;
+      gm.controls.elevator = turned < 360 ? 1 : 0;
+      turned += gm.s.w[2] * DT / DEG;
+    });
+    check('Pulling all the way round scores a loop', loop.tricks.list.some((x) => x.key === 'loop'), loop.tricks.list.map((x) => x.name).join(', '));
+    check('Tricks in a row build a combo', show.tricks.list.length < 2 || show.tricks.list[1].combo >= 2, show.tricks.list.map((x) => `${x.name} x${x.combo}`).join(', '));
+    const inverted = createGame(f35, { mode: 'airshow' });
+    let flipped = false;
+    runSteps(inverted, 8, (gm) => {
+      gm.controls.throttle = 0.8;
+      const roll = eulerFrom(gm.s.q).roll / DEG;
+      if (!flipped) { gm.controls.aileron = 1; if (Math.abs(roll) > 170) flipped = true; } else gm.controls.aileron = 0;
+      gm.controls.elevator = flipped ? -0.15 : 0;
+    });
+    check('Holding it upside down scores inverted flight', inverted.tricks.list.some((x) => x.key === 'inverted'), inverted.tricks.list.map((x) => x.name).join(', '));
+
+    const calm = createGame(b737, { mode: 'airshow' });
+    runSteps(calm, 20);
+    check('Flying straight earns nothing', calm.tricks.total === 0);
+
+    const bot = createBot();
+    // A show that ends on the approach to runway 12.
+    const landed = createGame(f35);
+    landed.mode = 'airshow';
+    landed.tricks.total = 1200;
+    runSteps(landed, 200, () => flyBot(bot, landed));
+    const r = landed.result;
+    check('Landing after the show banks the tricks', r && !r.failure && r.showScore > 1200, r ? `${r.headline}, show ${r.showScore}` : landed.phase);
+  }
+
   // Hijacking
   {
     const fight = (pressesPerSecond, ac = b737) => {

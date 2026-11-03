@@ -5,6 +5,7 @@ import { DEG, eulerFrom, FT, KT, qAxis, qMul } from '../sim/math.js';
 import { ATHENS_ARRIVAL, ATHENS_DEPARTURE, createRoute, LEGS, updateRoute } from './route.js';
 import { windAt } from './conditions.js';
 import { canStart, emergencyActive, startEmergency, updateEmergency } from './emergency.js';
+import { createTricks, updateTricks } from './tricks.js';
 import { nearLanding } from './autopilot.js';
 import { burning, canIgnite, ignite, updateFire } from './fire.js';
 import { applaud, createPassengers, jolt, touchdown, updatePassengers } from './passengers.js';
@@ -94,6 +95,14 @@ function createEmergencyFlight(ac, base) {
   return g;
 }
 
+/** Mode 5: in the air over the coast, no route. Fly tricks, then land on 12. */
+function createAirShow(ac, base) {
+  const g = { ...base, mode: 'airshow' };
+  const speed = (ac.fighter ? 320 : 230) * KT;
+  placeInFlight(g, [-9000, 3500 * FT + ac.gearHeight, 0], qAxis([0, 1, 0], Math.PI), speed, [-1, 0]);
+  return g;
+}
+
 export function createGame(ac, opts = {}) {
   const V = (opts.speedKt ?? ac.approachSpeedKt) * KT;
   const gamma = -RUNWAY.glideDeg * DEG;
@@ -128,6 +137,7 @@ export function createGame(ac, opts = {}) {
     conditions: weather,
     emergency: opts.emergency ?? null,
     fire: opts.fire ?? null,
+    tricks: createTricks(),
     extinguishing: false, // set by the player while spraying
     fbw: ac.fbw ? createFbw() : null,
     retardNext: 0,
@@ -143,6 +153,7 @@ export function createGame(ac, opts = {}) {
     sinkWarned: 0,
   };
   if (opts.mode === 'emergency') return createEmergencyFlight(ac, game);
+  if (opts.mode === 'airshow') return createAirShow(ac, game);
   return opts.mode === 'full' || opts.mode === 'athens' ? createFullFlight(ac, game, opts.mode === 'athens') : game;
 }
 
@@ -156,7 +167,13 @@ function finish(g, failure, stopped = false) {
   const r = g.record ?? {};
   g.result = scoreLanding({ ...r, failure, stopped });
   g.result.record = r;
-  g.result.parts.push({ name: `${g.passengers.count} passengers`, note: `comfort ${Math.round(g.passengers.comfort)}%` });
+  if (g.passengers.count) g.result.parts.push({ name: `${g.passengers.count} passengers`, note: `comfort ${Math.round(g.passengers.comfort)}%` });
+  if (g.tricks.list.length) g.result.parts.push({ name: `${g.tricks.list.length} tricks`, note: g.tricks.total.toLocaleString() });
+  if (g.mode === 'airshow') {
+    // The show is scored on tricks, plus a bonus for getting it back down safely.
+    const landed = !failure && g.result.record && g.result.record.sinkFpm != null;
+    g.result.showScore = landed ? g.tricks.total + g.result.score * 10 : 0; // crash and the tricks are lost
+  }
   g.events.push({ type: 'finished', result: g.result });
 }
 
@@ -284,6 +301,7 @@ export function tick(g) {
   const c = g.controls;
 
   if (g.conditions) s.wind = windAt(g.conditions, g.time, s.pos[1]);
+  if (g.phase === 'approach') updateTricks(g, DT);
   if (g.emergency) runEmergency(g);
   if (g.fire) runFire(g);
   if (g.phase === 'finished') return;
@@ -328,7 +346,7 @@ export function tick(g) {
     checkStrikes(g);
     if (g.phase === 'finished') return;
     if (touching) firstTouchdown(g);
-    else if (g.route ? g.route.final && s.pos[0] > RUNWAY.length + 1500 : s.pos[0] > RUNWAY.length + 100) missed(g);
+    else if (g.mode !== 'airshow' && (g.route ? g.route.final && s.pos[0] > RUNWAY.length + 1500 : s.pos[0] > RUNWAY.length + 100)) missed(g);
     if (s.pos[1] < 2.5 && s.gearDown < 0.95) return finish(g, 'gearUp');
     if (s.pos[1] < 0.5) finish(g, 'terrain');
     return;

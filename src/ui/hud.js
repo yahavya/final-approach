@@ -363,7 +363,15 @@ export function createHud(canvas) {
     text(reverse ? 'REV' : 'THR', x + 7, y + 12, 11, 'center', reverse ? AMBER : 'rgba(244,241,234,0.7)');
   }
 
+  const toasts = [];
+
   return {
+    /** A trick pops up in the middle of the screen. */
+    trick(name, points, combo) {
+      toasts.push({ name, points, combo, at: performance.now() });
+      if (toasts.length > 3) toasts.shift();
+    },
+
     clear() {
       ctx.clearRect(0, 0, w, h);
     },
@@ -488,7 +496,7 @@ export function createHud(canvas) {
       const tapeGap = narrow ? w * 0.34 : Math.min(w * 0.27, 340);
 
       if (cockpit) {
-        ladder(cx, cy, e.pitch, e.bank, ppr, world.tilt());
+        ladder(cx, cy, e.pitch, e.roll, ppr, world.tilt());
         const noseY = cy - world.tilt() * ppr;
         // Over the ground, so a crosswind shows as the marker sliding sideways.
         const track = qRotateInv(s.q, s.vel);
@@ -560,6 +568,22 @@ export function createHud(canvas) {
       }
       if (g.tailStruck) text('TAIL STRIKE', cx, cy - 50, 22, 'center', RED);
       if (advice) coachPanel(advice);
+      const now = performance.now();
+      toasts.forEach((t, i) => {
+        const age = (now - t.at) / 1000;
+        if (age > 2.6) return;
+        const y = h * 0.34 - i * 46 - age * 14;
+        ctx.globalAlpha = Math.min(1, (2.6 - age) * 2);
+        text(`${t.name.toUpperCase()}  +${t.points}${t.combo > 1 ? `  ×${t.combo}` : ''}`, w / 2, y, 28, 'center', AMBER);
+        ctx.globalAlpha = 1;
+      });
+      if (g.ac.fighter && g.tricks) {
+        text(`${g.tricks.felt.toFixed(1)} G`, cx - tapeGap - 8, cy + tapeH / 2 + 34, 15, 'center', g.tricks.felt > 7 ? RED : GREEN);
+      }
+      if (g.mode === 'airshow') {
+        text(`SHOW ${g.tricks.total.toLocaleString()}`, w - 22, 26, 18, 'right', AMBER);
+        text('Fly tricks, then land on runway 12 to bank them', w - 22, 48, 13, 'right', 'rgba(244,241,234,0.8)');
+      }
     },
   };
 }

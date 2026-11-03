@@ -483,6 +483,11 @@ export function createWorld(canvas, initialAircraft) {
       airliner.visible = (!cockpit || !!pose) && !crashSite;
       airliner.userData.windscreen.visible = !pose;
       airliner.userData.gear.visible = s.gearDown > 0.5;
+      if (airliner.userData.afterburner) {
+        const burning = s.spool > 0.9;
+        airliner.userData.afterburner.visible = burning;
+        if (burning) airliner.userData.afterburner.scale.set(1, 0.85 + Math.sin(time * 40) * 0.15, 1);
+      }
       const dt = Math.min(0.1, Math.max(0, time - lastTime));
       lastTime = time;
       explosion.update(dt);

@@ -221,6 +221,11 @@ export function createCoach() {
       if (g.time < nextLook && advice) return advice;
       nextLook = g.time + LOOK_EVERY;
 
+      if (g.mode === 'airshow' && g.phase === 'approach' && !(g.s.pos[0] > -12000 && g.s.pos[0] < 0 && Math.abs(g.s.pos[2]) < 1500 && g.s.vel[0] > 0)) {
+        advice = { stage: 'Air show: fly tricks, then line up with runway 12 to land', actions: [], tone: 'ok' };
+        return advice;
+      }
+
       if (g.route && !g.route.final && g.phase !== 'rollout') {
         advice = onRoute(g);
         return advice;
