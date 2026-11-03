@@ -552,8 +552,10 @@ export function createHud(canvas) {
         text(`WIND ${Math.round(Math.abs(across))} KT ${side}`, cx - tapeGap - 8, cy - tapeH / 2 - 32, 13, 'center', AMBER);
       }
       if (g.route && g.phase !== 'finished') routePanel(g, world);
-      text(`${g.passengers.count} PAX · COMFORT ${Math.round(g.passengers.comfort)}%`, 22, h - 40, 12, 'left',
-        g.passengers.comfort < 50 ? RED : 'rgba(244,241,234,0.75)');
+      if (g.passengers.count) {
+        text(`${g.passengers.count} PAX · COMFORT ${Math.round(g.passengers.comfort)}%`, 22, h - 40, 12, 'left',
+          g.passengers.comfort < 50 ? RED : 'rgba(244,241,234,0.75)');
+      }
 
       const chips = [];
       if (s.spoilers > 0.3) chips.push('SPOILERS');
