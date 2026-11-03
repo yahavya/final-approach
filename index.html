@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Final Approach</title>
+<style>
+  :root { --ink: #f4f1ea; --dim: rgba(244, 241, 234, 0.62); --panel: rgba(12, 17, 24, 0.72); --line: rgba(244, 241, 234, 0.18); --amber: #ffb347; --green: #7dffa0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0c1118; color: var(--ink); overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { pointer-events: none; }
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .overlay.show { display: flex; }
+  #title { background: linear-gradient(180deg, rgba(12, 17, 24, 0.25), rgba(12, 17, 24, 0.82)); }
+  .planes { display: flex; gap: 8px; margin-bottom: 8px; }
+  .plane { flex: 1; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
+  .plane.on { border-color: var(--amber); color: var(--amber); }
+  #plane-blurb { color: var(--dim); font-size: 13px; margin: 0 0 14px; min-height: 1.3em; }
+  .weather { font: inherit; font-size: 13px; font-weight: 600; color: var(--dim); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; margin: 0 0 14px; cursor: pointer; }
+  .weather.on { color: #9fc7ff; border-color: #9fc7ff; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .mode { text-align: left; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font: inherit; cursor: pointer; }
+  .mode:hover, .mode:focus-visible { border-color: var(--amber); outline: none; }
+  .mode b { display: block; font-size: 18px; margin-bottom: 4px; }
+  .mode span { display: block; color: var(--dim); font-size: 13px; line-height: 1.35; }
+  .mode em { display: block; color: var(--amber); font-style: normal; font-size: 13px; font-weight: 600; margin-top: 8px; min-height: 1em; }
+  @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } }
+  #analytics-notice { margin-top: 12px; color: var(--dim); font-size: 13px; }
+  #analytics-toggle { font: inherit; font-size: 13px; color: var(--dim); background: none; border: 0; padding: 0 0 0 4px; text-decoration: underline; cursor: pointer; }
+  #cruise { background: #0d2a3f; flex-direction: column; gap: 14px; text-align: center; }
+  #cruise svg { width: min(760px, 100%); height: auto; max-height: 64vh; }
+  #cruise h2 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+  #cruise p { margin: 0; color: var(--dim); font-size: 15px; }
+  #flash { position: fixed; inset: 0; background: #fff3dc; opacity: 0; pointer-events: none; }
+  #flash.go { animation: flash 0.7s ease-out; }
+  @keyframes flash { from { opacity: 0.95; } to { opacity: 0; } }
+  .card { width: min(680px, 100%); max-height: 100%; overflow: auto; }
+  h1 { font-size: clamp(44px, 9vw, 76px); line-height: 0.95; margin: 0 0 10px; font-weight: 700; letter-spacing: -0.03em; }
+  .sub { color: var(--dim); font-size: 17px; margin: 0 0 26px; line-height: 1.45; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 14px; margin-bottom: 26px; }
+  .keys b { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .keys span { color: var(--dim); }
+  .cta { font-size: 17px; font-weight: 600; color: var(--amber); }
+  #best { color: var(--dim); font-size: 14px; margin-top: 10px; }
+  #result .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px; backdrop-filter: blur(10px); }
+  #res-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  #res-head { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  #res-score { font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  #res-sub { color: var(--dim); margin: 6px 0 18px; font-size: 15px; }
+  .row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .row span:last-child { color: var(--dim); white-space: nowrap; }
+  #res-next { margin-top: 18px; color: var(--amber); font-weight: 600; }
+  #keybar { position: fixed; left: 0; right: 0; bottom: 0; display: none; flex-wrap: wrap; justify-content: center; gap: 2px 16px;
+    padding: 5px 12px; font-size: 12px; background: rgba(8, 12, 16, 0.82); pointer-events: none; }
+  #keybar.show { display: flex; }
+  #keybar span { color: var(--dim); white-space: nowrap; }
+  #keybar b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+  #coach-state.on { color: var(--amber); }
+  #pause { background: rgba(12, 17, 24, 0.5); font-size: 28px; font-weight: 600; }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<canvas id="hud"></canvas>
+
+<div id="flash"></div>
+
+<div id="keybar">
+  <span><b>↓ ↑</b>Pitch</span>
+  <span><b>← →</b>Roll</span>
+  <span><b>Q E</b>Rudder</span>
+  <span><b>R F</b>Thrust</span>
+  <span><b>Space</b>Brakes</span>
+  <span><b>T</b>Reverse</span>
+  <span><b>G</b>Gear</span>
+  <span><b>Z X</b>Flaps</span>
+  <span><b>C</b>View</span>
+  <span><b>V</b>Walk</span>
+  <span><b>H</b><span id="coach-state">Coach</span></span>
+  <span><b>Enter</b>Restart</span>
+  <span><b>Esc</b>Pause</span>
+  <span><b>M</b>Menu</span>
+</div>
+
+<div id="title" class="overlay show">
+  <div class="card">
+    <h1>Final Approach</h1>
+    <p class="sub">Three airliners and a fighter at Ben Gurion. Put them down gently.</p>
+    <p id="load-error" hidden style="color:var(--amber);font-weight:600">The game didn't load. Please refresh this page.</p>
+    <div class="planes">
+      <button class="plane" data-id="b737">737</button>
+      <button class="plane" data-id="a320">A320</button>
+      <button class="plane" data-id="b747">747</button>
+      <button class="plane" data-id="f35">F-35</button>
+    </div>
+    <p id="plane-blurb"></p>
+    <button id="difficulty" class="weather"></button>
+    <button id="weather" class="weather"></button>
+    <div class="modes">
+      <button class="mode" id="mode-landing"><b>1 · Landing</b><span>Ten kilometers out, off-center, in a crosswind. About 2.5 minutes.</span><em id="best-landing"></em></button>
+      <button class="mode" id="mode-full"><b>2 · Full Flight</b><span>Take off, fly out over the sea, come back and land. About 11 minutes.</span><em id="best-full"></em></button>
+      <button class="mode" id="mode-athens"><b>3 · Athens</b><span>Tel Aviv to Athens, takeoff to landing. About 14 minutes.</span><em id="best-athens"></em></button>
+      <button class="mode" id="mode-emergency"><b>4 · Emergency</b><span>An attacker and a cabin fire on the way back to Ben Gurion. About 8 minutes.</span><em id="best-emergency"></em></button>
+      <button class="mode" id="mode-airshow"><b>5 · Air Show</b><span>In the air, no route. Fly tricks, then land to bank your score. Best in the F-35.</span><em id="best-airshow"></em></button>
+    </div>
+    <div class="keys">
+      <b>↓ / ↑</b><span>Pull back / push forward</span>
+      <b>← / →</b><span>Roll</span>
+      <b>Q / E</b><span>Rudder, and steering on the ground</span>
+      <b>R / F</b><span>Thrust up / down</span>
+      <b>Space</b><span>Brakes</span>
+      <b>T</b><span>Reverse thrust, on the ground</span>
+      <b>G</b><span>Landing gear</span>
+      <b>Z / X</b><span>Flaps up / down. Hammer X to fight off an attacker</span>
+      <b>C</b><span>Cockpit / chase view</span>
+      <b>V</b><span>Get up and walk the cabin, when parked or above 1,500 ft. E talks, or sprays a fire</span>
+      <b>H</b><span>Coach on / off, with real-time instructions</span>
+      <b>Enter</b><span>Restart</span>
+      <b>Esc</b><span>Pause</span>
+      <b>A</b><span>Change airplane, on this screen</span>
+      <b>W</b><span>Clear skies or a storm, on this screen</span>
+      <b>D</b><span>Easy or normal, on this screen. Easy holds wings, centerline and speed for you</span>
+      <b>M</b><span>Back to this screen, when paused or finished</span>
+    </div>
+    <div id="analytics-notice" hidden>This game uses Google Analytics to count players and flights.<button id="analytics-toggle"></button></div>
+  </div>
+</div>
+
+<div id="result" class="overlay">
+  <div class="card">
+    <div id="res-top"><div id="res-head"></div><div id="res-score"></div></div>
+    <div id="res-sub"></div>
+    <div id="res-rows"></div>
+    <div id="res-next">Press Enter to fly it again, or M to change airplane</div>
+  </div>
+</div>
+
+<div id="pause" class="overlay">Paused</div>
+
+<div id="cruise" class="overlay">
+  <h2>Cruising at 35,000 ft</h2>
+  <svg viewBox="0 0 500 340" role="img" aria-label="Map of the eastern Mediterranean showing the flight from Tel Aviv to Athens">
+    <rect width="500" height="340" fill="#123a55"/>
+    <g fill="#c9b98a" stroke="#e6d9b0" stroke-width="0.6">
+      <path d="M90 0 L150 0 L170 30 L150 46 L140 34 L124 44 L136 66 L120 74 L128 94 L112 84 L100 104 L116 118 L108 138 L96 128 L86 146 L74 120 L66 96 L52 70 L60 34 Z"/>
+      <path d="M170 30 L500 0 L500 118 L440 128 L392 146 L340 130 L290 150 L240 142 L196 130 L176 104 L190 84 L168 62 Z"/>
+      <path d="M128 176 L172 170 L208 178 L204 186 L160 186 L130 186 Z"/>
+      <path d="M348 186 L388 172 L398 176 L376 192 L352 196 Z"/>
+      <path d="M500 150 L424 160 L402 212 L388 262 L372 306 L350 340 L500 340 Z"/>
+      <path d="M0 340 L0 290 L90 310 L200 300 L300 316 L350 340 Z"/>
+    </g>
+    <line x1="372" y1="262" x2="128" y2="92" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <line id="map-trail" x1="372" y1="262" x2="372" y2="262" stroke="#ffb347" stroke-width="2.5"/>
+    <circle cx="372" cy="262" r="4" fill="#f4f1ea"/>
+    <circle cx="128" cy="92" r="4" fill="#f4f1ea"/>
+    <text x="384" y="266" fill="#f4f1ea" font-size="14" font-weight="600">Tel Aviv</text>
+    <text x="74" y="88" fill="#f4f1ea" font-size="14" font-weight="600" text-anchor="end">Athens</text>
+    <circle id="map-plane" cx="372" cy="262" r="6" fill="#ffb347"/>
+  </svg>
+  <p id="cruise-eta"></p>
+  <p>Space to skip ahead</p>
+</div>
+
+<script>
+  // If the game can't start, say so instead of leaving dead buttons.
+  window.addEventListener('error', (e) => {
+    if (window.__fa || !e.filename || !e.filename.includes('/src/')) return;
+    const note = document.getElementById('load-error');
+    if (note) note.hidden = false;
+  });
+</script>
+<script type="module" src="./src/main.js?v=e179301"></script>
+</body>
+</html>
