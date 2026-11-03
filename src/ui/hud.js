@@ -269,7 +269,7 @@ export function createHud(canvas) {
     const fx = Math.cos(track);
     const fz = Math.sin(track);
 
-    const legs = g.route.legs.slice(g.route.final ? g.route.legs.length : g.route.leg);
+    const legs = g.route ? g.route.legs.slice(g.route.final ? g.route.legs.length : g.route.leg) : [];
     const points = legs.map((l) => ({ x: l.x, z: l.z }));
     if (runwayShown) points.push({ x: 0, z: 0 }, { x: RUNWAY.length, z: 0 });
     let range = 1500;
@@ -328,6 +328,26 @@ export function createHud(canvas) {
     ctx.closePath();
     ctx.fill();
     ctx.restore();
+  }
+
+  /**
+   * Modes without a route (Landing, Air Show) get the same map, runway marker
+   * and directions. The directions lead to the extended centerline, then along it.
+   */
+  function runwayPanel(g, world) {
+    const s = g.s;
+    const pink = '#ff9df5';
+    const km = Math.hypot(s.pos[0], s.pos[2]) / 1000;
+    const title = g.mode === 'airshow' ? `SHOW ${g.tricks.total.toLocaleString()}` : 'Runway 12';
+    text(title, w - 22, 26, g.mode === 'airshow' ? 18 : 14, 'right', g.mode === 'airshow' ? AMBER : pink);
+    const sub = g.mode === 'airshow' ? 'Fly tricks, then land on runway 12 to bank them' : `${km.toFixed(1)} km to the runway`;
+    text(sub, w - 22, 48, 13, 'right', g.mode === 'airshow' ? 'rgba(244,241,234,0.8)' : pink);
+    if (g.phase === 'approach') {
+      const aimX = Math.min(0, s.pos[0] + 2500);
+      text(turnText(turnTo(s, aimX, 0)), w - 22, 68, 17, 'right', '#f4f1ea');
+      marker(world, [0, 2, 0], GREEN, `RWY ${km.toFixed(km < 10 ? 1 : 0)} km`, h * 0.38);
+    }
+    if (w >= 900) navMap(g, true);
   }
 
   function routePanel(g, world) {
@@ -552,6 +572,7 @@ export function createHud(canvas) {
         text(`WIND ${Math.round(Math.abs(across))} KT ${side}`, cx - tapeGap - 8, cy - tapeH / 2 - 32, 13, 'center', AMBER);
       }
       if (g.route && g.phase !== 'finished') routePanel(g, world);
+      else if (!g.route && g.phase !== 'finished' && g.airport.id === 'tlv') runwayPanel(g, world);
       if (g.passengers.count) {
         text(`${g.passengers.count} PAX · COMFORT ${Math.round(g.passengers.comfort)}%`, 22, h - 40, 12, 'left',
           g.passengers.comfort < 50 ? RED : 'rgba(244,241,234,0.75)');
@@ -579,15 +600,11 @@ export function createHud(canvas) {
         text(`${t.name.toUpperCase()}  +${t.points}${t.combo > 1 ? `  ×${t.combo}` : ''}`, w / 2, y, 28, 'center', AMBER);
         ctx.globalAlpha = 1;
       });
-      if (g.easy && g.mode !== 'airshow' && g.phase !== 'finished') {
+      if (g.easy && (g.mode !== 'airshow' || g.controls.gearDown) && g.phase !== 'finished') {
         text('EASY: wings, centerline and speed are handled. You fly ↓ ↑, and F to close thrust at 20 ft', cx, bottom - 58, 12, 'center', 'rgba(159,199,255,0.9)');
       }
       if (g.ac.fighter && g.tricks) {
         text(`${g.tricks.felt.toFixed(1)} G`, cx - tapeGap - 8, cy + tapeH / 2 + 34, 15, 'center', g.tricks.felt > 7 ? RED : GREEN);
-      }
-      if (g.mode === 'airshow') {
-        text(`SHOW ${g.tricks.total.toLocaleString()}`, w - 22, 26, 18, 'right', AMBER);
-        text('Fly tricks, then land on runway 12 to bank them', w - 22, 48, 13, 'right', 'rgba(244,241,234,0.8)');
       }
     },
   };

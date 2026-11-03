@@ -571,6 +571,19 @@ export function allTests() {
     check('Easy wind is gentler', Math.hypot(gentle.wind[0], gentle.wind[2]) < Math.hypot(normal.wind[0], normal.wind[2]));
   }
 
+  // Every mode shares the same help
+  {
+    const show = createGame(f35, { mode: 'airshow', easy: true });
+    show.controls.gearDown = false;
+    const a = createAssist();
+    show.controls.aileron = 0.5;
+    applyAssist(a, show, { roll: false, thrust: false });
+    check('Air Show leaves you alone with the gear up, even on Easy', show.controls.aileron === 0.5);
+    show.controls.gearDown = true;
+    applyAssist(a, show, { roll: false, thrust: false });
+    check('…and helps you land once the gear is down', show.controls.aileron !== 0.5);
+  }
+
   // Storm
   for (const ac of [b737, a320, b747]) {
     const name = ac.shortName;

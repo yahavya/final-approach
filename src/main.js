@@ -281,7 +281,7 @@ function showResult(r) {
   let sub = r.missed ? 'No landing, no score. Going around was the safe call.' : `Grade ${r.grade}`;
   if (coachOn) sub += ' · Coach on';
   if (game.easy) sub += ' · Easy';
-  if (mode !== 'landing') {
+  {
     const minutes = Math.floor(game.time / 60);
     sub += ` · ${minutes}:${String(Math.floor(game.time % 60)).padStart(2, '0')} flight`;
   }

@@ -20,7 +20,9 @@ export function createAssist() {
  * player is using right now.
  */
 export function applyAssist(a, g, touched) {
-  if (g.mode === 'airshow' || g.phase === 'finished') return;
+  if (g.phase === 'finished') return;
+  // In the Air Show you're free until the gear comes down to land.
+  if (g.mode === 'airshow' && !g.controls.gearDown) return;
   const c = g.controls;
   if (touched.roll) a.rollAt = g.time;
   if (touched.thrust) a.thrustAt = g.time;
