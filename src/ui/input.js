@@ -57,7 +57,7 @@ export function createInput(target = window) {
     const s = g.s;
     const takeoff = g.phase === 'takeoff';
     const onGround = (s.contact.mainL || s.contact.mainR) && !(takeoff && s.V > ROTATE_ASSIST_MS);
-    const near = wheelHeight(s, g.ac) / FT < FLARE_ASSIST_FT;
+    const near = wheelHeight(s, g.ac) / FT < (g.ac.flareAssistFt ?? FLARE_ASSIST_FT);
     const pulling = down.has('ArrowDown');
     const landing = takeoff || s.vel[1] < 0 || flare.active;
     if (!near || !landing || onGround || down.has('ArrowUp') || (!pulling && !flare.active)) {

@@ -31,11 +31,11 @@ export const f35 = {
   rotateKt: 150,
   takeoffTrim: 0,
   rotatePitch: 12,
-  flarePitch: 9.5,
+  flarePitch: 13,
   flareFt: 20,
 
   CD0: 0.045,
-  inducedK: 0.14,
+  inducedK: 0.1,
 
   Cm0: 0.34,
   CmAlpha: -1.5,
@@ -79,11 +79,11 @@ export const f35 = {
   bottomOut: 0.4,
 
   strikePoints: {
-    tail: [-7.6, -0.05, 0],
+    tail: [-7.6, 0.2, 0],
     leftTip: [-3.5, -0.3, -5.35],
     rightTip: [-3.5, -0.3, 5.35],
-    leftEngine: [-7, -0.42, -0.4], // the nozzle: about 15° of clearance on the main wheels
-    rightEngine: [-7, -0.42, 0.4],
+    leftEngine: [-7, -0.2, -0.4], // the nozzle: about 17° of clearance on the main wheels
+    rightEngine: [-7, -0.2, 0.4],
   },
 
   eye: [5.4, 1.15, 0],
