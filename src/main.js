@@ -18,7 +18,7 @@ import { createWorld } from './world/scene.js';
 import { createHud } from './ui/hud.js';
 import { createAudio } from './ui/audio.js';
 import { createInput } from './ui/input.js';
-import { createAnalytics } from './ui/analytics.js?v=3';
+import { createAnalytics } from './ui/analytics.js';
 
 const params = new URLSearchParams(location.search);
 const botMode = params.has('bot');
