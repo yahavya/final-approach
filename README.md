@@ -26,6 +26,7 @@ To run it locally:
 | H | Coach on / off |
 | A | Change airplane, on the title screen |
 | W | Clear skies or a storm, on the title screen |
+| D | Easy or normal, on the title screen |
 | M | Back to the title screen, when paused or finished |
 | Enter | Restart |
 | Esc | Pause |

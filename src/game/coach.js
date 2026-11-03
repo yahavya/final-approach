@@ -126,6 +126,15 @@ export function createCoach() {
     return wantBank - (bank + (s.w[0] / DEG) * ROLL_LOOK_AHEAD);
   }
 
+  /** In Easy mode the airplane handles roll and thrust, so leave those out. */
+  const easyFilter = (g, advice) => {
+    if (!g.easy || !advice) return advice;
+    // Closing the thrust in the flare stays with the player.
+    const keep = advice.actions.filter((a) => a === ACTIONS.idle
+      || !['ArrowLeft', 'ArrowRight', 'KeyR', 'KeyF', 'KeyQ', 'KeyE', 'KeyT', 'Space'].includes(a.code));
+    return { ...advice, actions: keep };
+  };
+
   function inFlight(g, want, feet) {
     const s = g.s;
     const urgent = feet <= g.ac.flareFt + FLARE_EARLY;
@@ -217,6 +226,12 @@ export function createCoach() {
   return {
     /** Returns { stage, actions, tone }, or null once the flight is over. */
     advise(g) {
+      return easyFilter(g, adviseAll(g));
+    },
+  };
+
+  function adviseAll(g) {
+    {
       if (g.phase === 'finished') return null;
       if (g.time < nextLook && advice) return advice;
       nextLook = g.time + LOOK_EVERY;
@@ -240,6 +255,6 @@ export function createCoach() {
 
       advice = g.phase === 'rollout' && down ? onGround(g, want) : inFlight(g, want, feet);
       return advice;
-    },
-  };
+    }
+  }
 }

@@ -579,6 +579,9 @@ export function createHud(canvas) {
         text(`${t.name.toUpperCase()}  +${t.points}${t.combo > 1 ? `  ×${t.combo}` : ''}`, w / 2, y, 28, 'center', AMBER);
         ctx.globalAlpha = 1;
       });
+      if (g.easy && g.mode !== 'airshow' && g.phase !== 'finished') {
+        text('EASY: wings, centerline and speed are handled. You fly ↓ ↑, and F to close thrust at 20 ft', cx, bottom - 58, 12, 'center', 'rgba(159,199,255,0.9)');
+      }
       if (g.ac.fighter && g.tricks) {
         text(`${g.tricks.felt.toFixed(1)} G`, cx - tapeGap - 8, cy + tapeH / 2 + 34, 15, 'center', g.tricks.felt > 7 ? RED : GREEN);
       }

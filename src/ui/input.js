@@ -132,6 +132,14 @@ export function createInput(target = window) {
       presses.length = 0;
     },
 
+    /** Which controls the player is working right now, for Easy mode's assist. */
+    touched() {
+      return {
+        roll: down.has('ArrowLeft') || down.has('ArrowRight') || down.has('KeyQ') || down.has('KeyE'),
+        thrust: down.has('KeyR') || down.has('KeyF') || down.has('KeyT'),
+      };
+    },
+
     /** Walking uses the same keys. */
     walkKeys() {
       return {

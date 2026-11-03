@@ -14,6 +14,7 @@ import { createHijack, emergencyActive, emergencyTimes, mash } from '../src/game
 import { burning, createFire, fireInReach, fireLeft, fireOut } from '../src/game/fire.js';
 import { chatterLine, chatterTopic, nearestPassenger, seatName, topics } from '../src/game/chatter.js';
 import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopilot.js';
+import { applyAssist, createAssist } from '../src/game/assist.js';
 import { createWalker, rowOf, stepWalker, walkerPose } from '../src/game/walk.js';
 import { cabinLayout } from '../src/game/cabinLayout.js';
 import { mood } from '../src/game/passengers.js';
@@ -92,6 +93,7 @@ const land = (botOpts = {}, gameOpts = {}, seconds = 240, ac = b737) => {
  * the keys shown on screen, checking them every `reactionMs`.
  */
 export function coachedPilot(reactionMs, gameOpts = {}, onFrame = null, ac = b737) {
+  const assist = gameOpts.easy ? createAssist() : null;
   const handlers = {};
   const input = createInput({ addEventListener: (type, fn) => { handlers[type] = fn; } });
   const keys = new Set();
@@ -131,7 +133,9 @@ export function coachedPilot(reactionMs, gameOpts = {}, onFrame = null, ac = b73
       }
     }
     input.apply(g, frame);
+    if (assist) applyAssist(assist, g, input.touched());
     tick(g);
+    if (assist) applyAssist(assist, g, input.touched());
     tick(g);
     if (onFrame) onFrame(g, coach);
   }
@@ -528,6 +532,43 @@ export function allTests() {
     const full = coachedPilot(300, { mode: 'full', conditions: createConditions(5) }, null, ac);
     const fr = full.result;
     check(`${name}: following the coach flies the whole flight in wind`, fr && !fr.failure && !fr.missed, fr ? `${fr.headline}, score ${fr.score}` : `no result, leg ${full.route.leg}`);
+  }
+
+  // Easy mode
+  for (const ac of [b737, a320, b747, f35]) {
+    const name = ac.shortName;
+    let ok = 0;
+    let sum = 0;
+    const fails = [];
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const c = coachedPilot(400, { easy: true, conditions: createConditions(seed, { easy: true }) }, null, ac);
+      if (c.result && !c.result.failure && !c.result.missed) { ok += 1; sum += c.result.score; } else fails.push(`${seed}:${c.result ? c.result.headline : 'none'}`);
+    }
+    check(`${name}: on Easy, pressing only ↓ ↑ when told lands every time`, ok === 6, `${ok}/6, average ${(sum / Math.max(ok, 1)).toFixed(0)} ${fails.join(' ')}`);
+
+    let best = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const g = createGame(ac, { easy: true, conditions: createConditions(seed, { easy: true }) });
+      const a = createAssist();
+      runSteps(g, 240, () => applyAssist(a, g, { roll: false, thrust: false }));
+      if (g.result && !g.result.failure && !g.result.missed) best = Math.max(best, g.result.score);
+    }
+    check(`${name}: on Easy, doing nothing still doesn't land well`, best < 70, `best hands-off score ${best}`);
+  }
+  {
+    const h = createAssist();
+    const g = createGame(b737, { easy: true, conditions: createConditions(2, { easy: true }) });
+    g.controls.aileron = 0.8;
+    applyAssist(h, g, { roll: true, thrust: false });
+    check('On Easy, the player can take over the roll', g.controls.aileron === 0.8);
+    runSteps(g, 1.5, (gm) => { gm.controls.aileron = 0.8; applyAssist(h, gm, { roll: true, thrust: false }); });
+    const banked = Math.abs(eulerFrom(g.s.q).roll / DEG);
+    runSteps(g, 12, () => applyAssist(h, g, { roll: false, thrust: false }));
+    const after = g.controls.aileron;
+    check('…and takes the roll back after letting go', banked > 10 && after !== 0.8, `banked ${banked.toFixed(0)}°, aileron now ${after.toFixed(2)}`);
+    const normal = createConditions(5);
+    const gentle = createConditions(5, { easy: true });
+    check('Easy wind is gentler', Math.hypot(gentle.wind[0], gentle.wind[2]) < Math.hypot(normal.wind[0], normal.wind[2]));
   }
 
   // Storm

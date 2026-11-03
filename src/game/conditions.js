@@ -13,22 +13,28 @@ function seeded(seed) {
   };
 }
 
-export function createConditions(seed, { storm = false } = {}) {
+export function createConditions(seed, { storm = false, easy = false } = {}) {
   const rnd = seeded(seed);
   rnd();
   const side = rnd() < 0.5 ? -1 : 1;
-  const crossKt = storm ? 13 + rnd() * 9 : 7 + rnd() * 9;
+  let crossKt = storm ? 13 + rnd() * 9 : 7 + rnd() * 9;
   const headKt = rnd() * 10;
-  const gustKt = storm ? 8 + rnd() * 5 : 3 + rnd() * 4;
+  let gustKt = storm ? 8 + rnd() * 5 : 3 + rnd() * 4;
+  if (easy) {
+    crossKt *= 0.4;
+    gustKt *= 0.4;
+  }
   return {
     seed,
     storm,
-    turbulence: storm ? 5.5 : 0, // metres per second of up and down air
+    turbulence: storm ? (easy ? 2.5 : 5.5) : 0, // metres per second of up and down air
     wind: [-headKt * KT, 0, side * crossKt * KT], // the way the air is moving
     gust: gustKt * KT,
     phases: [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28],
     offsetZ: side * (60 + rnd() * 140),
-    offsetY: (rnd() - 0.5) * 40,
+    // On Easy the airplane steers itself, so the start is clearly off the glide
+    // path instead: getting down to it is the player's job.
+    offsetY: easy ? 110 + rnd() * 40 : (rnd() - 0.5) * 40, // always high: doing nothing lands far too long
   };
 }
 

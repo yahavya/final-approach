@@ -9,6 +9,7 @@ import { createWalker, rowOf, stepWalker, walkerPose } from './game/walk.js';
 import { mood } from './game/passengers.js';
 import { createCoach } from './game/coach.js';
 import { createConditions, nextLightning } from './game/conditions.js';
+import { applyAssist, createAssist } from './game/assist.js';
 import { createHijack, emergencyActive, emergencyTimes, fallProgress, fightLeft, fightPose, mash } from './game/emergency.js';
 import { burning, createFire, fireInReach, fireLeft, fireOut } from './game/fire.js';
 import { cabinLayout } from './game/cabinLayout.js';
@@ -45,9 +46,10 @@ try {
 
 const el = (id) => document.getElementById(id);
 
-const bestKey = (m, ac) => `final-approach-best-${m}-${ac.id}`;
+const bestKey = (m, ac) => `final-approach-best-${m}-${ac.id}${easy ? '-easy' : ''}`;
 const COACH_KEY = 'final-approach-coach';
 const WEATHER_KEY = 'final-approach-weather';
+const DIFFICULTY_KEY = 'final-approach-difficulty';
 const readBest = (m) => {
   try { return Number(localStorage.getItem(bestKey(m, aircraft))) || 0; } catch { return 0; }
 };
@@ -66,6 +68,23 @@ let stormOn = (() => {
   try { return params.get('weather') === 'storm' || localStorage.getItem(WEATHER_KEY) === 'storm'; } catch { return false; }
 })();
 let lightningIn = 0;
+// Easy unless someone has chosen Normal: most people have never flown.
+let easy = (() => {
+  try { return params.get('difficulty') !== 'normal' && localStorage.getItem(DIFFICULTY_KEY) !== 'normal'; } catch { return true; }
+})();
+let assist = createAssist();
+
+function setEasy(on) {
+  easy = on;
+  try { localStorage.setItem(DIFFICULTY_KEY, on ? 'easy' : 'normal'); } catch { /* a convenience only */ }
+  showDifficulty();
+  showBest();
+}
+
+function showDifficulty() {
+  el('difficulty').textContent = easy ? 'Difficulty: easy' : 'Difficulty: normal';
+  el('difficulty').classList.toggle('on', easy);
+}
 
 function setStorm(on) {
   stormOn = on;
@@ -176,9 +195,10 @@ function start(nextMode = mode) {
   world.setFire(null);
   if (walker) { walker = null; world.setWalker(null); }
   // ?calm=1 keeps still air, for practicing the flare on its own.
-  const conditions = params.has('calm') ? undefined : createConditions(Date.now() % 2147483646, { storm: stormOn });
+  const conditions = params.has('calm') ? undefined : createConditions(Date.now() % 2147483646, { storm: stormOn, easy });
   const trouble = planTrouble();
-  game = createGame(aircraft, { distance, mode, conditions, ...trouble });
+  game = createGame(aircraft, { distance, mode, conditions, easy, ...trouble });
+  assist = createAssist();
   emergencyBot = createBot();
   world.setAirport('tlv');
   world.setStorm(!!conditions?.storm);
@@ -260,6 +280,7 @@ function showResult(r) {
   const best = readBest(mode);
   let sub = r.missed ? 'No landing, no score. Going around was the safe call.' : `Grade ${r.grade}`;
   if (coachOn) sub += ' · Coach on';
+  if (game.easy) sub += ' · Easy';
   if (mode !== 'landing') {
     const minutes = Math.floor(game.time / 60);
     sub += ` · ${minutes}:${String(Math.floor(game.time % 60)).padStart(2, '0')} flight`;
@@ -362,6 +383,8 @@ window.addEventListener('keydown', (e) => {
     start();
   } else if (screen === 'title' && e.code === 'Digit4') {
     start('emergency');
+  } else if (screen === 'title' && e.code === 'KeyD') {
+    setEasy(!easy);
   } else if (screen === 'title' && e.code === 'KeyW') {
     setStorm(!stormOn);
   } else if (screen === 'title' && e.code === 'Digit5') {
@@ -403,6 +426,7 @@ document.querySelectorAll('.plane').forEach((b) => {
   b.addEventListener('click', () => selectAircraft(findAircraft(b.dataset.id)));
 });
 el('weather').addEventListener('click', () => setStorm(!stormOn));
+el('difficulty').addEventListener('click', () => setEasy(!easy));
 el('mode-landing').addEventListener('click', () => start('landing'));
 el('mode-full').addEventListener('click', () => start('full'));
 el('mode-athens').addEventListener('click', () => start('athens'));
@@ -483,6 +507,7 @@ function advance(frameTime) {
   } else if (!bot && !walker) input.apply(game, frameTime);
   accumulator += Math.min(frameTime, 0.1);
   while (accumulator >= DT) {
+    if (game.easy && !bot && !walker && !emergencyActive(game.emergency)) applyAssist(assist, game, input.touched());
     if (bot) flyAuto(bot, game);
     else if (emergencyActive(game.emergency)) flyAuto(emergencyBot, game);
     else if (walker) autopilot();
@@ -587,6 +612,7 @@ window.__fa = { get game() { return game; }, stats, world };
 
 showAircraft();
 showWeather();
+showDifficulty();
 showBest();
 showCoachState();
 if (botMode) start();

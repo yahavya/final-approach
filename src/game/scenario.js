@@ -14,6 +14,7 @@ import { createState, DT, solveTrim, step } from '../sim/flightModel.js';
 import { createFbw, surfaces } from '../sim/flyByWire.js';
 import { strikes, wheelHeight } from '../sim/gear.js';
 import { CRASH_FPM, scoreLanding } from './scoring.js';
+import { EASY_CRASH_FPM } from './assist.js';
 
 export const RUNWAY = {
   name: '12',
@@ -138,6 +139,7 @@ export function createGame(ac, opts = {}) {
     emergency: opts.emergency ?? null,
     fire: opts.fire ?? null,
     tricks: createTricks(),
+    easy: !!opts.easy,
     extinguishing: false, // set by the player while spraying
     fbw: ac.fbw ? createFbw() : null,
     retardNext: 0,
@@ -246,6 +248,8 @@ function runFire(g) {
   if (outcome === 'lost') finish(g, 'fire');
 }
 
+const crashLimit = (g) => (g.easy ? EASY_CRASH_FPM : CRASH_FPM);
+
 function firstTouchdown(g) {
   const s = g.s;
   const sinkFpm = -s.vel[1] / 0.00508;
@@ -263,7 +267,7 @@ function firstTouchdown(g) {
   g.events.push({ type: 'touchdown', sinkFpm });
   touchdown(g, sinkFpm);
 
-  if (sinkFpm >= CRASH_FPM) return finish(g, g.time - g.wasStalling < 3 ? 'stall' : 'crash');
+  if (sinkFpm >= crashLimit(g)) return finish(g, g.time - g.wasStalling < 3 ? 'stall' : 'crash');
   if (g.route && !nearAirport(s)) return finish(g, 'terrain');
   if (g.record.x < 0 || Math.abs(s.pos[2]) > RUNWAY.width / 2) return finish(g, g.record.x < 0 ? 'short' : 'offRunway');
 }
@@ -363,7 +367,7 @@ export function tick(g) {
     g.record.bounces += 1;
     g.events.push({ type: 'bounce' });
     const fpm = -s.vel[1] / 0.00508;
-    if (fpm >= CRASH_FPM) return finish(g, 'crash');
+    if (fpm >= crashLimit(g)) return finish(g, 'crash');
   }
   // Took off again and kept going: a touch and go, not a landing.
   if (!touching && wheels > 15) return missed(g);
