@@ -8,6 +8,7 @@ import { createAirliner } from './airliner.js';
 import { createExplosion } from './explosion.js';
 import { createCabin } from './cabin.js';
 import { createAthens } from './athens.js';
+import { createStorm } from './storm.js';
 import { b737 } from '../sim/aircraft/b737.js';
 
 const COCKPIT_FOV = 58;
@@ -287,7 +288,7 @@ function addClouds(scene) {
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.8 });
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.8, color: 0xffffff });
   for (let i = 0; i < 40; i++) {
     const s = new THREE.Sprite(mat);
     s.position.set(-18000 + rnd() * 70000, 1500 + rnd() * 900, -38000 + rnd() * 76000);
@@ -295,6 +296,7 @@ function addClouds(scene) {
     s.scale.set(size, size * 0.34, 1);
     scene.add(s);
   }
+  return mat;
 }
 
 export function createWorld(canvas, initialAircraft) {
@@ -307,7 +309,8 @@ export function createWorld(canvas, initialAircraft) {
 
   const camera = new THREE.PerspectiveCamera(COCKPIT_FOV, 1, 0.12, 200000);
 
-  scene.add(new THREE.HemisphereLight(0xdfeaff, 0x7c7458, 1.5));
+  const hemi = new THREE.HemisphereLight(0xdfeaff, 0x7c7458, 1.5);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffe2bd, 2.3);
   sun.position.set(-0.5, 0.42, 0.62);
   scene.add(sun);
@@ -330,7 +333,7 @@ export function createWorld(canvas, initialAircraft) {
   addFields(telAviv);
   addCity(telAviv);
   addAirport(telAviv);
-  addClouds(scene);
+  const cloudMaterial = addClouds(scene);
 
   const athens = createAthens(groundMaterial);
   athens.visible = false;
@@ -343,6 +346,7 @@ export function createWorld(canvas, initialAircraft) {
   scene.add(airliner);
 
   const explosion = createExplosion(scene);
+  const storm = createStorm(scene, { sky, hemi, sun, sea, clouds: cloudMaterial });
   let crashSite = null;
   let lastTime = 0;
   let cabin = createCabin(ac);
@@ -384,6 +388,15 @@ export function createWorld(canvas, initialAircraft) {
 
   return {
     isCockpit: () => cockpit && !crashSite && !pose,
+
+    /** Clear skies or a storm. */
+    setStorm(on) {
+      storm.set(on);
+    },
+
+    lightning() {
+      storm.strike();
+    },
 
     /** Shows the world around one airport. */
     setAirport(id) {
@@ -520,6 +533,7 @@ export function createWorld(canvas, initialAircraft) {
       }
 
       sky.position.copy(camera.position);
+      storm.update(dt, camera.position, [s.wind[0] - s.vel[0], s.wind[1] - s.vel[1], s.wind[2] - s.vel[2]]);
       renderer.render(scene, camera);
     },
   };

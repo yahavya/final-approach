@@ -17,7 +17,7 @@ import { canLeaveSeat, flyAuto, handBack, mustReturn } from '../src/game/autopil
 import { createWalker, rowOf, stepWalker, walkerPose } from '../src/game/walk.js';
 import { cabinLayout } from '../src/game/cabinLayout.js';
 import { mood } from '../src/game/passengers.js';
-import { createConditions } from '../src/game/conditions.js';
+import { createConditions, windAt } from '../src/game/conditions.js';
 import { crowdShape, renderApplause } from '../src/ui/applause.js';
 import { a320 } from '../src/sim/aircraft/a320.js';
 import { b747 } from '../src/sim/aircraft/b747.js';
@@ -527,6 +527,45 @@ export function allTests() {
     const full = coachedPilot(300, { mode: 'full', conditions: createConditions(5) }, null, ac);
     const fr = full.result;
     check(`${name}: following the coach flies the whole flight in wind`, fr && !fr.failure && !fr.missed, fr ? `${fr.headline}, score ${fr.score}` : `no result, leg ${full.route.leg}`);
+  }
+
+  // Storm
+  for (const ac of [b737, a320, b747]) {
+    const name = ac.shortName;
+    const seeds = [1, 2, 3, 4, 5, 6];
+    let ok = 0;
+    let sum = 0;
+    const fails = [];
+    for (const seed of seeds) {
+      const g = land({}, { conditions: createConditions(seed, { storm: true }) }, 240, ac);
+      if (g.result && !g.result.failure && !g.result.missed) { ok += 1; sum += g.result.score; } else fails.push(`${seed}:${g.result ? g.result.headline : 'none'}`);
+    }
+    check(`${name}: bot lands in a storm`, ok === seeds.length, `${ok}/${seeds.length}, average ${(sum / Math.max(ok, 1)).toFixed(0)} ${fails.join(' ')}`);
+    let coached = 0;
+    const cf = [];
+    for (const seed of seeds.slice(0, 4)) {
+      const c = coachedPilot(300, { conditions: createConditions(seed, { storm: true }) }, null, ac);
+      if (c.result && !c.result.failure && !c.result.missed) coached += 1; else cf.push(`${seed}:${c.result ? c.result.headline : 'none'}`);
+    }
+    check(`${name}: following the coach lands in a storm`, coached >= 3, `${coached}/4 ${cf.join(' ')}`);
+    let alone = 0;
+    for (const seed of seeds) {
+      const g = createGame(ac, { conditions: createConditions(seed, { storm: true }) });
+      runSteps(g, 240);
+      if (g.result && !g.result.failure && !g.result.missed) alone += 1;
+    }
+    check(`${name}: doing nothing never lands in a storm`, alone === 0, `${alone} landed`);
+  }
+  {
+    const storm = createConditions(3, { storm: true });
+    const clear = createConditions(3);
+    let up = 0;
+    for (let t = 0; t < 60; t += 0.5) up = Math.max(up, Math.abs(windAt(storm, t, 1000)[1]));
+    check('A storm has up and down turbulence', up > 1.5 && windAt(clear, 10, 1000)[1] === 0, `${up.toFixed(1)} m/s`);
+    check('A storm blows harder than clear weather', Math.hypot(storm.wind[0], storm.wind[2]) > Math.hypot(clear.wind[0], clear.wind[2]));
+    const bumpy = createGame(b737, { conditions: storm });
+    runSteps(bumpy, 60);
+    check('Turbulence unsettles the passengers', bumpy.passengers.comfort < 100, `comfort ${bumpy.passengers.comfort.toFixed(0)}%`);
   }
 
   // Applause

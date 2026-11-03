@@ -200,6 +200,44 @@ export function createAudio() {
     src.start();
   }
 
+  /** Distant thunder: a long low rumble. */
+  function thunder(strength) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(4);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(420, t);
+    filter.frequency.exponentialRampToValueAtTime(60, t + 3.5);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.9 * strength, t + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 3.8);
+    src.connect(filter).connect(gain).connect(master);
+    src.start();
+  }
+
+  /** Steady rain on the fuselage. */
+  let rainGain = null;
+  function rainOn(on) {
+    if (!ctx) return;
+    if (!rainGain) {
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuffer(2);
+      src.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 3200;
+      filter.Q.value = 0.4;
+      rainGain = ctx.createGain();
+      rainGain.gain.value = 0;
+      src.connect(filter).connect(rainGain).connect(master);
+      src.start();
+    }
+    rainGain.gain.setTargetAtTime(on ? 0.05 : 0, ctx.currentTime, 0.4);
+  }
+
   function boom() {
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -260,6 +298,10 @@ export function createAudio() {
 
     stopApplause,
 
+    rain(on) {
+      rainOn(on);
+    },
+
     setRunning(on) {
       wantRunning = on;
       if (!ctx) return;
@@ -278,6 +320,7 @@ export function createAudio() {
       if (e.type === 'hit') thump(0.35);
       if (e.type === 'alarm') alarm();
       if (e.type === 'spray') spray();
+      if (e.type === 'thunder') thunder(e.strength ?? 1);
     },
 
     update(g) {

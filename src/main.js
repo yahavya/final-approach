@@ -8,7 +8,7 @@ import { canLeaveSeat, flyAuto, handBack, mustReturn, nearLanding } from './game
 import { createWalker, rowOf, stepWalker, walkerPose } from './game/walk.js';
 import { mood } from './game/passengers.js';
 import { createCoach } from './game/coach.js';
-import { createConditions } from './game/conditions.js';
+import { createConditions, nextLightning } from './game/conditions.js';
 import { createHijack, emergencyActive, emergencyTimes, fallProgress, fightLeft, fightPose, mash } from './game/emergency.js';
 import { burning, createFire, fireInReach, fireLeft, fireOut } from './game/fire.js';
 import { cabinLayout } from './game/cabinLayout.js';
@@ -47,6 +47,7 @@ const el = (id) => document.getElementById(id);
 
 const bestKey = (m, ac) => `final-approach-best-${m}-${ac.id}`;
 const COACH_KEY = 'final-approach-coach';
+const WEATHER_KEY = 'final-approach-weather';
 const readBest = (m) => {
   try { return Number(localStorage.getItem(bestKey(m, aircraft))) || 0; } catch { return 0; }
 };
@@ -59,6 +60,22 @@ function readCoachSetting() {
 }
 function writeCoachSetting(on) {
   try { localStorage.setItem(COACH_KEY, on ? 'on' : 'off'); } catch { /* a convenience only */ }
+}
+
+let stormOn = (() => {
+  try { return params.get('weather') === 'storm' || localStorage.getItem(WEATHER_KEY) === 'storm'; } catch { return false; }
+})();
+let lightningIn = 0;
+
+function setStorm(on) {
+  stormOn = on;
+  try { localStorage.setItem(WEATHER_KEY, on ? 'storm' : 'clear'); } catch { /* a convenience only */ }
+  showWeather();
+}
+
+function showWeather() {
+  el('weather').textContent = stormOn ? 'Weather: storm' : 'Weather: clear';
+  el('weather').classList.toggle('on', stormOn);
 }
 
 let coachOn = readCoachSetting();
@@ -159,11 +176,13 @@ function start(nextMode = mode) {
   world.setFire(null);
   if (walker) { walker = null; world.setWalker(null); }
   // ?calm=1 keeps still air, for practicing the flare on its own.
-  const conditions = params.has('calm') ? undefined : createConditions(Date.now() % 2147483646);
+  const conditions = params.has('calm') ? undefined : createConditions(Date.now() % 2147483646, { storm: stormOn });
   const trouble = planTrouble();
   game = createGame(aircraft, { distance, mode, conditions, ...trouble });
   emergencyBot = createBot();
   world.setAirport('tlv');
+  world.setStorm(!!conditions?.storm);
+  lightningIn = nextLightning();
   el('cruise').classList.remove('show');
   cruiseLeft = 0;
   world.resetCrash();
@@ -182,6 +201,7 @@ function start(nextMode = mode) {
   if (!bot) analytics.event('flight_start', { game_mode: mode, aircraft: aircraft.shortName });
   audio.unlock();
   audio.stopApplause();
+  audio.rain(!!game.conditions?.storm);
   // ?arrive=1 skips straight to the Athens arrival, for testing it.
   if (mode === 'athens' && params.has('arrive')) finishCruise();
   audio.setRunning(true);
@@ -210,6 +230,7 @@ function finishCruise() {
 
 function backToTitle() {
   screen = 'title';
+  audio.rain(false);
   el('cruise').classList.remove('show');
   if (walker) { walker = null; world.setWalker(null); }
   audio.stopApplause();
@@ -336,6 +357,8 @@ window.addEventListener('keydown', (e) => {
     start();
   } else if (screen === 'title' && e.code === 'Digit4') {
     start('emergency');
+  } else if (screen === 'title' && e.code === 'KeyW') {
+    setStorm(!stormOn);
   } else if (screen === 'title' && e.code === 'KeyA') {
     const index = AIRCRAFT.indexOf(aircraft);
     selectAircraft(AIRCRAFT[(index + 1) % AIRCRAFT.length]);
@@ -372,6 +395,7 @@ window.addEventListener('keydown', (e) => {
 document.querySelectorAll('.plane').forEach((b) => {
   b.addEventListener('click', () => selectAircraft(findAircraft(b.dataset.id)));
 });
+el('weather').addEventListener('click', () => setStorm(!stormOn));
 el('mode-landing').addEventListener('click', () => start('landing'));
 el('mode-full').addEventListener('click', () => start('full'));
 el('mode-athens').addEventListener('click', () => start('athens'));
@@ -436,6 +460,16 @@ function advance(frameTime) {
   }
   // People keep hammering for a moment after they win, so X stays dead briefly.
   if (fighting || performance.now() < ignoreSwitchesUntil) input.discardSwitches();
+  if (game.conditions?.storm && game.phase !== 'finished') {
+    lightningIn -= frameTime;
+    if (lightningIn <= 0) {
+      lightningIn = nextLightning();
+      world.lightning();
+      game.passengers.scaredUntil = game.time + 1.5;
+      const distance = 0.6 + Math.random() * 2.5;
+      setTimeout(() => audio.handle({ type: 'thunder', strength: 1.3 - distance * 0.3 }), distance * 1000);
+    }
+  }
   if (fighting) {
     // the autopilot is flying, below
   } else if (!bot && !walker) input.apply(game, frameTime);
@@ -544,6 +578,7 @@ function frame(now) {
 window.__fa = { get game() { return game; }, stats, world };
 
 showAircraft();
+showWeather();
 showBest();
 showCoachState();
 if (botMode) start();

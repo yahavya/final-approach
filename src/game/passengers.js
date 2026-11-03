@@ -26,7 +26,7 @@ export function updatePassengers(g, dt) {
     const felt = length(accel) / GRAVITY;
     p.load += (felt - p.load) * clamp(dt * 2, 0, 1); // smoothed: bumps, not noise
     const rough = Math.max(0, Math.abs(p.load - 1) - 0.2);
-    p.comfort -= rough * 16 * dt;
+    p.comfort -= rough * 40 * dt;
     if (rough === 0) p.comfort += 0.12 * dt; // people settle down in smooth air
   }
   p.lastVel = [...s.vel];

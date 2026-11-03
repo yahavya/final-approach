@@ -18,6 +18,8 @@
   .plane { flex: 1; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; font: inherit; font-weight: 600; font-size: 16px; cursor: pointer; }
   .plane.on { border-color: var(--amber); color: var(--amber); }
   #plane-blurb { color: var(--dim); font-size: 13px; margin: 0 0 14px; min-height: 1.3em; }
+  .weather { font: inherit; font-size: 13px; font-weight: 600; color: var(--dim); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; margin: 0 0 14px; cursor: pointer; }
+  .weather.on { color: #9fc7ff; border-color: #9fc7ff; }
   .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
   .mode { text-align: left; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font: inherit; cursor: pointer; }
   .mode:hover, .mode:focus-visible { border-color: var(--amber); outline: none; }
@@ -94,6 +96,7 @@
       <button class="plane" data-id="b747">747</button>
     </div>
     <p id="plane-blurb"></p>
+    <button id="weather" class="weather"></button>
     <div class="modes">
       <button class="mode" id="mode-landing"><b>1 · Landing</b><span>Ten kilometers out, off-center, in a crosswind. About 2.5 minutes.</span><em id="best-landing"></em></button>
       <button class="mode" id="mode-full"><b>2 · Full Flight</b><span>Take off, fly out over the sea, come back and land. About 11 minutes.</span><em id="best-full"></em></button>
@@ -115,6 +118,7 @@
       <b>Enter</b><span>Restart</span>
       <b>Esc</b><span>Pause</span>
       <b>A</b><span>Change airplane, on this screen</span>
+      <b>W</b><span>Clear skies or a storm, on this screen</span>
       <b>M</b><span>Back to this screen, when paused or finished</span>
     </div>
     <div id="analytics-notice" hidden>This game uses Google Analytics to count players and flights.<button id="analytics-toggle"></button></div>

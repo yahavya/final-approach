@@ -44,6 +44,31 @@ export function createHud(canvas) {
     ctx.stroke();
   }
 
+  // Raindrops on the windscreen, each sliding back at its own pace.
+  const drops = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random() * 0.8, r: 1 + Math.random() * 3.5, speed: 0.2 + Math.random() }));
+
+  function windscreenRain(speed, dt) {
+    ctx.save();
+    for (const d of drops) {
+      d.x += (d.x - 0.5) * dt * speed * 0.004 * d.speed;
+      d.y -= dt * speed * 0.0012 * d.speed;
+      if (d.x < 0 || d.x > 1 || d.y < 0) {
+        d.x = Math.random();
+        d.y = 0.3 + Math.random() * 0.5;
+      }
+      const x = d.x * w;
+      const y = d.y * h;
+      ctx.strokeStyle = 'rgba(220,230,240,0.35)';
+      ctx.lineWidth = d.r * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (d.x - 0.5) * d.r * 6, y + d.r * 3);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  let lastDraw = performance.now();
+
   function cockpitFrame() {
     // Glareshield and windscreen pillars
     ctx.fillStyle = '#10141a';
@@ -449,6 +474,10 @@ export function createHud(canvas) {
       const e = eulerFrom(s.q);
       const cockpit = world.isCockpit();
 
+      const nowMs = performance.now();
+      const dt = Math.min(0.1, (nowMs - lastDraw) / 1000);
+      lastDraw = nowMs;
+      if (cockpit && g.conditions && g.conditions.storm) windscreenRain(s.V, dt);
       if (cockpit) cockpitFrame();
 
       const cx = w / 2;

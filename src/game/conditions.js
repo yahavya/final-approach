@@ -13,15 +13,17 @@ function seeded(seed) {
   };
 }
 
-export function createConditions(seed) {
+export function createConditions(seed, { storm = false } = {}) {
   const rnd = seeded(seed);
   rnd();
   const side = rnd() < 0.5 ? -1 : 1;
-  const crossKt = 7 + rnd() * 9;
+  const crossKt = storm ? 13 + rnd() * 9 : 7 + rnd() * 9;
   const headKt = rnd() * 10;
-  const gustKt = 3 + rnd() * 4;
+  const gustKt = storm ? 8 + rnd() * 5 : 3 + rnd() * 4;
   return {
     seed,
+    storm,
+    turbulence: storm ? 5.5 : 0, // metres per second of up and down air
     wind: [-headKt * KT, 0, side * crossKt * KT], // the way the air is moving
     gust: gustKt * KT,
     phases: [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28],
@@ -37,5 +39,12 @@ export function windAt(c, t, y) {
   const near = 0.7 + 0.3 * Math.min(1, y / 100); // slower close to the ground
   const speed = Math.hypot(c.wind[0], c.wind[2]) || 1;
   const k = near * (1 + gust / speed);
-  return [c.wind[0] * k, 0, c.wind[2] * k];
+  // Storm turbulence: quick, irregular bumps up and down.
+  const bumps = c.turbulence
+    ? c.turbulence * near * (0.55 * Math.sin(t * 1.3 + b) + 0.35 * Math.sin(t * 2.9 + a) + 0.25 * Math.sin(t * 5.3 + d))
+    : 0;
+  return [c.wind[0] * k, bumps, c.wind[2] * k];
 }
+
+/** When the next lightning strike comes, in seconds from now. */
+export const nextLightning = (random = Math.random) => 4 + random() * 10;
