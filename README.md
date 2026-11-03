@@ -49,6 +49,10 @@ The live site uses Google Analytics to count players and flights. It can be turn
 
 There is no build step and no dependencies to install. Three.js is in `vendor/`.
 
+## Publishing
+
+Commit to main, then run `python3 tools/release.py`. It stamps every file with the commit's version and publishes to the gh-pages branch, which GitHub Pages serves, so browsers never mix old and new files.
+
 ## Tests
 
     ./tests/run.sh
