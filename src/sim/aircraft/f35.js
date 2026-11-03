@@ -31,7 +31,7 @@ export const f35 = {
   rotateKt: 150,
   takeoffTrim: 0,
   rotatePitch: 12,
-  flarePitch: 13,
+  flarePitch: 11.8,
   flareFt: 20,
 
   CD0: 0.045,
