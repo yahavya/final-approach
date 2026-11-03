@@ -9,6 +9,7 @@ import { gearForces } from './gear.js';
 export const GRAVITY = 9.81;
 export const RHO = 1.2; // sea-level air density, close enough for an approach
 export const DT = 1 / 120;
+export const SPEED_OF_SOUND = 340; // m/s at sea level
 
 /** Values that depend on flap position, from 0 (up) to 1 (flaps 30). */
 export function flapValues(ac, flap) {
@@ -75,7 +76,10 @@ export function aeroForces(s, ac, c) {
   const past = Math.max(0, alpha - flaps.alphaStall * DEG);
   let cl = liftCoefficient(ac, alpha, s.flap) * (1 + 0.08 * ground) - ac.spoilerCL * s.spoilers;
   cl = Math.max(cl, -1);
-  const cd = flaps.CD0 + ac.gearCD * s.gearDown + ac.inducedK * cl * cl * (1 - 0.5 * ground)
+  // Near the speed of sound, drag climbs steeply. Only the fighter gets there.
+  const mach = V / SPEED_OF_SOUND;
+  const wave = mach > 0.9 ? 6 * (mach - 0.9) ** 2 : 0;
+  const cd = flaps.CD0 + wave + ac.gearCD * s.gearDown + ac.inducedK * cl * cl * (1 - 0.5 * ground)
     + ac.spoilerCD * s.spoilers + 0.6 * past;
 
   const vHat = scale(vb, 1 / V);

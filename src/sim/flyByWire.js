@@ -18,6 +18,8 @@ const FLOOR_MARGIN = 2; // degrees below the stall, where full thrust is forced
 const FLOOR_MIN_FT = 100;
 const FLARE_FT = 50;
 
+const AIRBUS = { maxPitchRate: MAX_PITCH_RATE, maxRollRate: MAX_ROLL_RATE, maxG: 2.5, free: false };
+
 export function createFbw() {
   return { active: false, pitchI: 0, gammaRef: 0, bankRef: 0, pitchRef: 0, flare: false, alphaProt: false, alphaFloor: false };
 }
@@ -29,6 +31,9 @@ export function surfaces(g, dt) {
   if (!f) return c;
 
   const s = g.s;
+  let law = g.ac.fbwLaw ?? AIRBUS;
+  // Gear down, a fighter switches to a gentle landing mode, as the real one does.
+  if (law.free && s.gearDown > 0.5) law = { ...law, maxPitchRate: 8, maxRollRate: 30, free: false, maxG: 3 };
   const onGround = s.contact.mainL || s.contact.mainR || s.contact.nose;
   if (onGround || s.V < 40) {
     f.active = false;
@@ -39,7 +44,7 @@ export function surfaces(g, dt) {
 
   const e = eulerFrom(s.q);
   const pitch = e.pitch / DEG;
-  const bank = e.bank / DEG;
+  const bank = law.free ? e.roll / DEG : e.bank / DEG;
   const gamma = Math.asin(clamp(s.vel[1] / s.V, -1, 1)) / DEG;
   const alpha = s.alpha / DEG;
   const feet = wheelHeight(s, g.ac) / FT;
@@ -62,13 +67,16 @@ export function surfaces(g, dt) {
     f.pitchRef = pitch;
   }
   if (!neutral) {
-    demand = stick * MAX_PITCH_RATE;
+    demand = stick * law.maxPitchRate;
     f.gammaRef = gamma;
     f.pitchRef = pitch;
   } else if (f.flare) {
     // Flare law: hold the attitude, then ease the nose down so you must pull.
     if (feet < 30) f.pitchRef -= 0.25 * dt;
     demand = clamp(f.pitchRef - pitch, -1.5, 1.5);
+  } else if (law.free && (Math.abs(bank) > 45 || Math.abs(pitch) > 25)) {
+    demand = 0; // mid-maneuver, a centered stick just stops the nose moving
+    f.gammaRef = gamma;
   } else {
     const turn = Math.abs(Math.tan(clamp(bank, -60, 60) * DEG) * Math.sin(bank * DEG)) * ((9.81 / s.V) / DEG);
     demand = clamp((f.gammaRef - gamma) * 1.2, -3, 3) + turn;
@@ -85,8 +93,13 @@ export function surfaces(g, dt) {
   }
   f.alphaFloor = alpha > stall - FLOOR_MARGIN && feet > FLOOR_MIN_FT;
 
-  demand = Math.min(demand, (PITCH_UP - pitch) * 1.2);
-  demand = Math.max(demand, (PITCH_DOWN - pitch) * 1.2);
+  if (!law.free) {
+    demand = Math.min(demand, (PITCH_UP - pitch) * 1.2);
+    demand = Math.max(demand, (PITCH_DOWN - pitch) * 1.2);
+  }
+  // Never pull more g than the airframe allows.
+  const gLimit = ((law.maxG - 1) * 9.81) / Math.max(s.V, 1) / DEG;
+  demand = clamp(demand, -gLimit * 0.5, gLimit);
 
   const scale = Math.min(2, (75 / s.V) ** 2);
   const error = demand - s.w[2] / DEG;
@@ -97,14 +110,17 @@ export function surfaces(g, dt) {
   const rollStick = c.aileron;
   let rollDemand;
   if (Math.abs(rollStick) >= 0.02) {
-    rollDemand = rollStick * MAX_ROLL_RATE;
-    f.bankRef = clamp(bank, -NEUTRAL_BANK, NEUTRAL_BANK);
-    if (Math.abs(bank) > MAX_BANK && Math.sign(rollStick) === Math.sign(bank)) rollDemand = 0;
+    rollDemand = rollStick * law.maxRollRate;
+    f.bankRef = law.free ? bank : clamp(bank, -NEUTRAL_BANK, NEUTRAL_BANK);
+    if (!law.free && Math.abs(bank) > MAX_BANK && Math.sign(rollStick) === Math.sign(bank)) rollDemand = 0;
+  } else if (law.free && Math.abs(f.bankRef) > 60) {
+    rollDemand = 0; // released mid-roll: it stays where you left it
   } else {
-    rollDemand = clamp((f.bankRef - bank) * 0.8, -7, 7);
+    const wrapped = ((f.bankRef - bank + 540) % 360) - 180;
+    rollDemand = clamp(wrapped * 0.8, -7, 7);
   }
   const rollRate = s.w[0] / DEG;
-  const aileron = clamp(rollDemand / 20 + (rollDemand - rollRate) * 0.1, -1, 1);
+  const aileron = clamp(rollDemand / (law.maxRollRate * 1.3) + (rollDemand - rollRate) * (law.free ? 0.01 : 0.1), -1, 1);
 
   return {
     ...c,

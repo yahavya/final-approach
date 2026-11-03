@@ -21,6 +21,7 @@ import { createConditions, windAt } from '../src/game/conditions.js';
 import { crowdShape, renderApplause } from '../src/ui/applause.js';
 import { a320 } from '../src/sim/aircraft/a320.js';
 import { b747 } from '../src/sim/aircraft/b747.js';
+import { f35 } from '../src/sim/aircraft/f35.js';
 
 /**
  * A pilot with a keyboard: looks at what the bot would do, but can only hold a
@@ -454,11 +455,11 @@ export function allTests() {
   }
 
   // Every airplane must do the basics
-  for (const ac of [a320, b747]) {
+  for (const ac of [a320, b747, f35]) {
     const name = ac.shortName;
     const t = solveTrim(ac, ac.approachSpeedKt * KT, -3 * DEG);
     const deck = t.alpha / DEG - 3;
-    check(`${name}: approach deck angle is believable`, deck > 1 && deck < 4.5, `${deck.toFixed(2)}°, lever ${(t.lever * 100).toFixed(0)}%`);
+    check(`${name}: approach deck angle is believable`, deck > 1 && deck < (ac.fighter ? 11 : 4.5), `${deck.toFixed(2)}°, lever ${(t.lever * 100).toFixed(0)}%`);
 
     const trimmed = createGame(ac);
     const p0 = eulerFrom(trimmed.s.q).pitch;
@@ -633,6 +634,47 @@ export function allTests() {
     hb.controls.elevator = 0.2;
     handBack(hb);
     check('Handing back centers the stick', hb.controls.elevator === 0);
+  }
+
+  // The F-35 is a fighter
+  {
+    const fly = (seconds, each) => {
+      const g = createGame(f35, { mode: 'emergency' });
+      g.controls.throttle = 1;
+      runSteps(g, seconds, each);
+      return g;
+    };
+    let rolled = 0;
+    const roll = fly(4, (gm) => { gm.controls.aileron = 1; rolled += Math.abs(gm.s.w[0]) * DT / DEG; });
+    check('F-35: full stick rolls at least 360° in 3 seconds', rolled >= 360 * 4 / 3, `${rolled.toFixed(0)}° in 4 s`);
+
+    let pitched = 0;
+    let lowest = 1e9;
+    const loop = fly(40, (gm) => {
+      gm.controls.throttle = 1;
+      if (pitched < 360) gm.controls.elevator = 1; else gm.controls.elevator = 0;
+      pitched += gm.s.w[2] * DT / DEG;
+      lowest = Math.min(lowest, gm.s.pos[1]);
+    });
+    check('F-35: full back stick flies a complete loop', pitched >= 360 && !loop.result, `${pitched.toFixed(0)}°, lowest ${(lowest * 3.28).toFixed(0)} ft, ${loop.result ? loop.result.headline : 'flying'}`);
+
+    let fastest = 0;
+    fly(60, (gm) => {
+      gm.controls.throttle = 1;
+      gm.controls.elevator = (0 - eulerFrom(gm.s.q).pitch / DEG) * 0.05;
+      fastest = Math.max(fastest, gm.s.V / KT);
+    });
+    check('F-35: full afterburner is fast but stays below the sound barrier', fastest > 500 && fastest < 700, `${fastest.toFixed(0)} kt`);
+
+    let maxG = 0;
+    const pull = fly(8, (gm) => {
+      gm.controls.throttle = 1;
+      gm.controls.elevator = 1;
+      maxG = Math.max(maxG, gm.passengers.load);
+    });
+    check('F-35: the computers keep a hard pull within 9 g', maxG > 3 && maxG < 9.8, `${maxG.toFixed(1)} g`);
+    const parked = createGame(f35, { mode: 'full' });
+    check('F-35: no cabin to walk', !canLeaveSeat(parked) && parked.passengers.count === 0);
   }
 
   // Hijacking

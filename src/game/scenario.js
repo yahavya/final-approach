@@ -124,7 +124,7 @@ export function createGame(ac, opts = {}) {
     },
     airport: AIRPORTS.tlv,
     route: null,
-    passengers: createPassengers(cabinLayout(ac).passengers),
+    passengers: createPassengers(ac.passengers === false ? 0 : cabinLayout(ac).passengers),
     conditions: weather,
     emergency: opts.emergency ?? null,
     fire: opts.fire ?? null,

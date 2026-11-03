@@ -16,6 +16,7 @@ const groundSpeed = (g) => Math.hypot(g.s.vel[0], g.s.vel[2]);
 /** You can get up when parked, or high enough for the autopilot to have it. */
 export function canLeaveSeat(g) {
   if (emergencyActive(g.emergency)) return false;
+  if (!g.passengers.count) return false; // a fighter has no cabin to walk
   if (g.phase === 'finished') return true;
   if (onGround(g)) return groundSpeed(g) < 0.7;
   return g.phase === 'approach' && wheelHeight(g.s, g.ac) / FT > LEAVE_SEAT_FT && !nearLanding(g);

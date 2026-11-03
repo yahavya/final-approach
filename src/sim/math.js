@@ -68,9 +68,11 @@ export const qRotateInv = (q, v) => qRotate([q[0], -q[1], -q[2], -q[3]], v);
 export const eulerFrom = (q) => {
   const nose = qRotate(q, [1, 0, 0]);
   const wing = qRotate(q, [0, 0, 1]);
+  const up = qRotate(q, [0, 1, 0]);
   return {
     pitch: Math.asin(clamp(nose[1], -1, 1)),
     bank: Math.asin(clamp(-wing[1], -1, 1)),
+    roll: Math.atan2(-wing[1], up[1]), // full circle: +-180 when upside down
     heading: Math.atan2(nose[2], nose[0]),
   };
 };
